@@ -30,6 +30,12 @@ class SucklessProfiler {
     var leftPaneSizeChars: Int = 100
 
     /**
+     * Useful for profiling servlets: removes the unnecessary stacktrace all the way from Thread.run through http server's
+     * parsing code, the filter chain and jumps straight into the servlet code.
+     */
+    var pruneStacktraceBottom: Boolean = false
+
+    /**
      * Starts to profile this thread. There is no support for profiling multiple threads.
      */
     fun start() {
@@ -38,7 +44,7 @@ class SucklessProfiler {
         profilingThread.start()
     }
 
-    fun profile(block: () -> Unit) {
+    inline fun profile(block: () -> Unit) {
         start()
         try {
             block()
@@ -58,7 +64,7 @@ class SucklessProfiler {
         println("====================================================================")
         println("Result of profiling of $profilingThread: ${totalTime}ms")
         println("====================================================================")
-        profilingThread.tree.cutStacktraces(dontProfilePackages).dump(coloredDump, totalTime, leftPaneSizeChars)
+        profilingThread.tree.cutStacktraces(dontProfilePackages).dump(this, totalTime)
         println("====================================================================")
     }
 }
@@ -130,7 +136,7 @@ private class StacktraceSamples {
         return samples
     }
 
-    private class Dumper(private val roots: LinkedHashMap<StackTraceElement, Node>) {
+    private class Dumper(private val roots: List<Node>) {
         private class Node(val element: StackTraceElement) {
             val children = LinkedHashMap<StackTraceElement, Node>()
             var ownTime: Long = 0
@@ -139,14 +145,19 @@ private class StacktraceSamples {
             var occurences: Int = 0
 
             override fun toString() = "Node(element=$element, ownTime=$ownTime, totalTime=$totalTime, occurences=$occurences)"
+
+            fun pruneStacktraceTop(): Node = when {
+                children.size == 1 -> children.values.first().pruneStacktraceTop()
+                else -> this
+            }
         }
 
         companion object {
-            fun parse(tree: StacktraceSamples): Dumper {
+            fun parse(tree: StacktraceSamples, pruneStacktraceTop: Boolean): Dumper {
                 val roots = LinkedHashMap<StackTraceElement, Node>()
+
                 // first, compute the 'roots' tree.
                 for (sample in tree.samples) {
-
                     var parentNode: Node? = null
                     for (element in sample.stacktrace.reversedArray()) {
                         val node: Node
@@ -173,7 +184,12 @@ private class StacktraceSamples {
                     node.computeTotalTime()
                 }
 
-                return Dumper(roots)
+                var root = roots.values.toList()
+                if (pruneStacktraceTop) {
+                    root = root.map { it.pruneStacktraceTop() }
+                }
+
+                return Dumper(root)
             }
         }
 
@@ -181,6 +197,9 @@ private class StacktraceSamples {
 
             fun Long.percentOfTime() = DecimalFormat("#.#%").format(toFloat() / totalTime)
 
+            /**
+             * Converts our stack node into the [PrettyPrintTreeNode] which will then pretty-print itself.
+             */
             fun toTreeNode(node: Node, padding: Int): PrettyPrintTreeNode {
                 val text = buildString {
                     var colorControlChars = 0
@@ -223,17 +242,20 @@ private class StacktraceSamples {
                 return PrettyPrintTreeNode(text, node.children.values.map { toTreeNode(it, padding + 2) })
             }
 
-            for (root in roots.values) {
+            for (root in roots) {
                 toTreeNode(root, 0).print()
             }
         }
     }
 
-    fun dump(coloredDump: Boolean, totalTime: Long, leftPaneSizeChars: Int) {
-        Dumper.parse(this).dump(coloredDump, totalTime, leftPaneSizeChars)
+    fun dump(config: SucklessProfiler, totalTime: Long) {
+        Dumper.parse(this, config.pruneStacktraceBottom).dump(config.coloredDump, totalTime, config.leftPaneSizeChars)
     }
 }
 
+/**
+ * A tree which pretty-prints itself.
+ */
 private class PrettyPrintTreeNode(internal val name: String, internal val children: List<PrettyPrintTreeNode>) {
 
     fun print() {
