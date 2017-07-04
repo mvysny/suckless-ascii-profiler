@@ -5,7 +5,7 @@ plugins {
 defaultTasks "clean", "build"
 
 group 'com.github.mvysny.sucklessprofiler'
-version '0.2'
+version '0.3-SNAPSHOT'
 
 ext.local = new Properties()
 if (project.rootProject.file('local.properties').exists()) {
