@@ -19,7 +19,15 @@ class SucklessProfiler {
      */
     var dontProfilePackages: List<String> = listOf("java.*", "javax.*", "sun.*", "sunw.*", "com.sun.*", "jdk.*")
 
+    /**
+     * Sample the thread stacktrace each 20 milliseconds.
+     */
     var sampleEachMs: Int = 20
+
+    /**
+     * The size of the left pane, in characters. Decrease if you know your stacktraces won't be deep.
+     */
+    var leftPaneSizeChars: Int = 100
 
     /**
      * Starts to profile this thread. There is no support for profiling multiple threads.
@@ -50,7 +58,7 @@ class SucklessProfiler {
         println("====================================================================")
         println("Result of profiling of $profilingThread: ${totalTime}ms")
         println("====================================================================")
-        profilingThread.tree.cutStacktraces(dontProfilePackages).dump(coloredDump, totalTime)
+        profilingThread.tree.cutStacktraces(dontProfilePackages).dump(coloredDump, totalTime, leftPaneSizeChars)
         println("====================================================================")
     }
 }
@@ -166,7 +174,7 @@ private class StacktraceSamples {
             }
         }
 
-        fun dump(colored: Boolean, totalTime: Long) {
+        fun dump(colored: Boolean, totalTime: Long, leftPaneSizeChars: Int) {
 
             fun Long.percentOfTime() = DecimalFormat("#.#%").format(toFloat() / totalTime)
 
@@ -203,7 +211,7 @@ private class StacktraceSamples {
                     }
                     // right pane: stacktrace element so that the programmer can ctrl+click
                     val charactersUsed = length + padding - colorControlChars
-                    repeat((160 - charactersUsed).coerceAtLeast(0)) { append(' ') }
+                    repeat((leftPaneSizeChars - charactersUsed).coerceAtLeast(0)) { append(' ') }
                     append(" at ")
                     append(node.element)
                 }
@@ -216,8 +224,8 @@ private class StacktraceSamples {
         }
     }
 
-    fun dump(coloredDump: Boolean, totalTime: Long) {
-        Dumper.parse(this).dump(coloredDump, totalTime)
+    fun dump(coloredDump: Boolean, totalTime: Long, leftPaneSizeChars: Int) {
+        Dumper.parse(this).dump(coloredDump, totalTime, leftPaneSizeChars)
     }
 }
 
