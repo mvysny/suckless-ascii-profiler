@@ -30,7 +30,17 @@ And you should see the output similar to the screenshot above.
 
 ## Usage
 
-Add the following dependency todo.
+Add the following repository and dependency to your gradle script:
+
+```groovy
+repositories {
+    maven { url "https://dl.bintray.com/mvysny/github/" }
+}
+dependencies {
+    compile "com.github.mvysny.sucklessprofiler:suckless-profiler:0.1"
+}
+```
+
 Then, in your code, just call the following:
 
 ```java
@@ -43,13 +53,28 @@ p.stop();  // this will dump the profiling info into the console
 or in Kotlin:
 
 ```kotlin
-fun main(args: Array<String>) {
-    SucklessProfiler().apply {
-        coloredDump = true
-    }.profile {
-        Thread.sleep(500)
-        println(URL("https://aedict-online.eu").readText())
-        Thread.sleep(500)
+SucklessProfiler().apply {
+    coloredDump = true
+}.profile {
+    Thread.sleep(500)
+    println(URL("https://aedict-online.eu").readText())
+    Thread.sleep(500)
+}
+```
+
+or in your Vaadin Servlet:
+
+```kotlin
+@WebServlet(urlPatterns = arrayOf("/*"), name = "MyUIServlet", asyncSupported = true)
+@VaadinServletConfiguration(ui = MyUI::class, productionMode = false)
+class MyUIServlet : VaadinServlet() {
+    override fun service(request: HttpServletRequest?, response: HttpServletResponse?) {
+        SucklessProfiler().apply {
+            coloredDump = true
+            pruneStacktraceBottom = true
+        }.profile {
+            super.service(request, response)
+        }
     }
 }
 ```
