@@ -37,7 +37,7 @@ repositories {
     maven { url "https://dl.bintray.com/mvysny/github/" }
 }
 dependencies {
-    compile "com.github.mvysny.sucklessprofiler:suckless-profiler:0.1"
+    compile "com.github.mvysny.sucklessprofiler:suckless-profiler:0.2"
 }
 ```
 
