@@ -44,6 +44,9 @@ class SucklessProfiler {
         profilingThread.start()
     }
 
+    /**
+     * Profiles given block. A shorthand for calling [start], then your code, then [stop]. Dumps the data obtained.
+     */
     inline fun profile(block: () -> Unit) {
         start()
         try {
