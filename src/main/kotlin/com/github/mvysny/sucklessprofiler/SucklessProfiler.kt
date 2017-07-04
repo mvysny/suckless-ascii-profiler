@@ -1,6 +1,7 @@
 package com.github.mvysny.sucklessprofiler
 
 import java.net.URL
+import java.text.DecimalFormat
 import java.util.*
 
 class SucklessProfiler {
@@ -42,13 +43,14 @@ class SucklessProfiler {
      * Stops the profiler and dumps the data obtained.
      */
     fun stop() {
+        val totalTime = System.currentTimeMillis() - startedAt
         started = false
         profilingThread.interrupt()
         profilingThread.join()
         println("====================================================================")
-        println("Result of profiling of $profilingThread: ${System.currentTimeMillis() - startedAt}ms")
+        println("Result of profiling of $profilingThread: ${totalTime}ms")
         println("====================================================================")
-        profilingThread.tree.cutStacktraces(dontProfilePackages).dump(coloredDump)
+        profilingThread.tree.cutStacktraces(dontProfilePackages).dump(coloredDump, totalTime)
         println("====================================================================")
     }
 }
@@ -164,7 +166,10 @@ private class StacktraceSamples {
             }
         }
 
-        fun dump(colored: Boolean) {
+        fun dump(colored: Boolean, totalTime: Long) {
+
+            fun Long.percentOfTime() = DecimalFormat("#.#%").format(toFloat() / totalTime)
+
             fun toTreeNode(node: Node, padding: Int): PrettyPrintTreeNode {
                 val text = buildString {
                     var colorControlChars = 0
@@ -188,12 +193,12 @@ private class StacktraceSamples {
                     }
                     append("total ")
                     appendColor("\u001B[31m")
-                    append("${node.totalTime}ms")
+                    append(node.totalTime.percentOfTime())
                     appendColor("\u001B[0m")
                     if (node.children.isEmpty() || node.ownTime > 0) {
                         append(" / own ")
                         appendColor("\u001B[32m")
-                        append("${node.ownTime}ms")
+                        append(node.ownTime.percentOfTime())
                         appendColor("\u001B[0m")
                     }
                     // right pane: stacktrace element so that the programmer can ctrl+click
@@ -211,8 +216,8 @@ private class StacktraceSamples {
         }
     }
 
-    fun dump(coloredDump: Boolean) {
-        Dumper.parse(this).dump(coloredDump)
+    fun dump(coloredDump: Boolean, totalTime: Long) {
+        Dumper.parse(this).dump(coloredDump, totalTime)
     }
 }
 
@@ -235,9 +240,10 @@ private class PrettyPrintTreeNode(internal val name: String, internal val childr
 
 fun main(args: Array<String>) {
     SucklessProfiler().apply {
-        dontProfilePackages = listOf()
         coloredDump = true
     }.profile {
+        Thread.sleep(500)
         println(URL("https://aedict-online.eu").readText())
+        Thread.sleep(500)
     }
 }
