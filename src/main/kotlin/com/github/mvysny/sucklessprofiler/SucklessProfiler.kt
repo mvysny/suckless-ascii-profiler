@@ -3,9 +3,16 @@ package com.github.mvysny.sucklessprofiler
 import java.net.URL
 import java.text.DecimalFormat
 import java.util.*
+import java.util.concurrent.*
 
+/**
+ * The profiler. Create a new instance, configure it, then call [start]+[stop] or [profile].
+ *
+ * Every profiler instance can be used only once. Calling [start] multiple times leads to undefined results.
+ */
 class SucklessProfiler {
-    private lateinit var profilingThread: SamplingThread
+    private lateinit var samplerFuture: Future<*>
+    private lateinit var sampler: StacktraceSampler
     @Volatile private var started = false
     private var startedAt = System.currentTimeMillis()
     /**
@@ -40,8 +47,8 @@ class SucklessProfiler {
      */
     fun start() {
         started = true
-        profilingThread = SamplingThread(Thread.currentThread(), sampleEachMs)
-        profilingThread.start()
+        sampler = StacktraceSampler(Thread.currentThread(), sampleEachMs)
+        samplerFuture = executor.submit(sampler, Unit)
     }
 
     /**
@@ -62,33 +69,47 @@ class SucklessProfiler {
     fun stop() {
         val totalTime = System.currentTimeMillis() - startedAt
         started = false
-        profilingThread.interrupt()
-        profilingThread.join()
-        println("====================================================================")
-        println("Result of profiling of $profilingThread: ${totalTime}ms")
-        println("====================================================================")
-        profilingThread.tree.cutStacktraces(dontProfilePackages).dump(this, totalTime)
-        println("====================================================================")
+        sampler.stop()
+        samplerFuture.get()
+        // only now it is safe to access Sampler since Future.get() forms the happens-before relation
+        // don't print directly to stdout - there may be multiple profilings ongoing, and we don't want those println to interleave.
+        val sb = StringBuilder()
+        sb.append("====================================================================\n")
+        sb.append("Result of profiling of $sampler: ${totalTime}ms, ${sampler.tree.sampleCount} samples\n")
+        sb.append("====================================================================\n")
+        sampler.tree.cutStacktraces(dontProfilePackages).dump(sb, this, totalTime)
+        sb.append("====================================================================\n")
+        println(sb)
     }
 }
 
-private class SamplingThread(val threadToProfile: Thread, val sampleDelayMs: Int) : Thread() {
+private val executor = ThreadPoolExecutor(0, Integer.MAX_VALUE,
+        3L, TimeUnit.SECONDS,
+        SynchronousQueue<Runnable>(),
+        ThreadFactory { runnable ->
+    val t = Thread(runnable)
+    t.isDaemon = true
+    t
+})
+
+private class StacktraceSampler(val threadToProfile: Thread, val sampleDelayMs: Int) : Runnable {
     val nameOfThreadToProfile = threadToProfile.name
     val tree = StacktraceSamples()
+    private val stopLatch = CountDownLatch(1)
 
-    init {
-        isDaemon = true
-        name = "Profiler of $nameOfThreadToProfile"
+    fun stop() {
+        stopLatch.countDown()
     }
 
     override fun run() {
+        Thread.currentThread().name = "SucklessProfiler of $nameOfThreadToProfile"
         try {
             var lastStacktraceSampleAt = System.currentTimeMillis()
             while (true) {
                 val now = System.currentTimeMillis()
                 tree.add(threadToProfile.stackTrace, (now - lastStacktraceSampleAt).toInt())
                 lastStacktraceSampleAt = now
-                Thread.sleep(sampleDelayMs.toLong())
+                if (stopLatch.await(sampleDelayMs.toLong(), TimeUnit.MILLISECONDS)) break
             }
         } catch (t: InterruptedException) {
             // expected after the end of the profiling
@@ -125,6 +146,9 @@ private class StacktraceSamples {
     }
 
     private val samples = LinkedList<Sample>()
+
+    val sampleCount: Int get() = samples.size
+
     fun add(stacktrace: Array<StackTraceElement>, durationMs: Int) {
         if (stacktrace.isEmpty()) return
         samples.add(Sample(stacktrace, durationMs))
@@ -196,7 +220,7 @@ private class StacktraceSamples {
             }
         }
 
-        fun dump(colored: Boolean, totalTime: Long, leftPaneSizeChars: Int) {
+        fun dump(sb: StringBuilder, colored: Boolean, totalTime: Long, leftPaneSizeChars: Int) {
 
             fun Long.percentOfTime() = DecimalFormat("#.#%").format(toFloat() / totalTime)
 
@@ -246,13 +270,13 @@ private class StacktraceSamples {
             }
 
             for (root in roots) {
-                toTreeNode(root, 0).print()
+                toTreeNode(root, 0).print(sb)
             }
         }
     }
 
-    fun dump(config: SucklessProfiler, totalTime: Long) {
-        Dumper.parse(this, config.pruneStacktraceBottom).dump(config.coloredDump, totalTime, config.leftPaneSizeChars)
+    fun dump(sb: StringBuilder, config: SucklessProfiler, totalTime: Long) {
+        Dumper.parse(this, config.pruneStacktraceBottom).dump(sb, config.coloredDump, totalTime, config.leftPaneSizeChars)
     }
 }
 
@@ -261,16 +285,16 @@ private class StacktraceSamples {
  */
 private class PrettyPrintTreeNode(internal val name: String, internal val children: List<PrettyPrintTreeNode>) {
 
-    fun print() {
-        print("", true)
+    fun print(sb: StringBuilder) {
+        print(sb, "", true)
     }
 
-    private fun print(prefix: String, isTail: Boolean) {
-        println(prefix + (if (isTail) "\\-" else "+-") + name)
+    private fun print(sb: StringBuilder, prefix: String, isTail: Boolean) {
+        sb.append(prefix + (if (isTail) "\\-" else "+-") + name + '\n')
         for (i in 0..children.size - 2) {
-            children[i].print(prefix + if (isTail) "  " else "| ", false)
+            children[i].print(sb, prefix + if (isTail) "  " else "| ", false)
         }
-        children.lastOrNull()?.print(prefix + if (isTail) "  " else "| ", true)
+        children.lastOrNull()?.print(sb, prefix + if (isTail) "  " else "| ", true)
     }
 }
 
