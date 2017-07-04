@@ -136,8 +136,9 @@ private class StacktraceSamples {
             var ownTime: Long = 0
             // duration of all children, computed gradually
             var totalTime: Long = 0
+            var occurences: Int = 0
 
-            override fun toString() = "Node(element=$element, ownTime=$ownTime, totalTime=$totalTime)"
+            override fun toString() = "Node(element=$element, ownTime=$ownTime, totalTime=$totalTime, occurences=$occurences)"
         }
 
         companion object {
@@ -155,9 +156,11 @@ private class StacktraceSamples {
                         } else {
                             node = parentNode.children.getOrPut(element) { Node(element) }
                         }
+                        node.occurences++
                         parentNode = node
                     }
-                    parentNode!!.ownTime += sample.durationMs.toLong()
+                    val leafNode = parentNode!!
+                    leafNode.ownTime += sample.durationMs.toLong()
                 }
 
                 // second pass - recompute total durations
@@ -200,12 +203,14 @@ private class StacktraceSamples {
                         append(": ")
                     }
                     append("total ")
-                    appendColor("\u001B[31m")
+                    appendColor("\u001B[33m")
+                    if (node.occurences <= 1) append('>')
                     append(node.totalTime.percentOfTime())
                     appendColor("\u001B[0m")
                     if (node.children.isEmpty() || node.ownTime > 0) {
                         append(" / own ")
                         appendColor("\u001B[32m")
+                        if (node.occurences <= 1) append('>')
                         append(node.ownTime.percentOfTime())
                         appendColor("\u001B[0m")
                     }
@@ -237,12 +242,10 @@ private class PrettyPrintTreeNode(internal val name: String, internal val childr
 
     private fun print(prefix: String, isTail: Boolean) {
         println(prefix + (if (isTail) "\\-" else "+-") + name)
-        for (i in 0..children.size - 1 - 1) {
+        for (i in 0..children.size - 2) {
             children[i].print(prefix + if (isTail) "  " else "| ", false)
         }
-        if (children.isNotEmpty()) {
-            children[children.size - 1].print(prefix + if (isTail) "  " else "| ", true)
-        }
+        children.lastOrNull()?.print(prefix + if (isTail) "  " else "| ", true)
     }
 }
 
