@@ -101,9 +101,9 @@ on during those 20ms inbetween samplings. Thus, if a method is sampled only once
 the method took less than 1ms to run, or whether it took 39ms. To remedy this, you can increase the sampling rate to 10ms
 (or even 2ms) to obtain more accurate results while still maintaining quite minor performance hit. However, this is often not required.
 
-Usually what you hunt for is where your code spends 200ms or more. And that is something we can
+Usually what you hunt for is the place where your code spends 200ms or more. And that is something we can
 detect with high accuracy. If a method is present in multiple samplings, then there is a high
-probability that that method was running quite long. Of course there is the possibility that
+probability that that method was running quite long. Of course there is also the possibility that
 the method was called repeatedly, ran shortly and was captured in multiple stack samplings,
 but the probability of this is very low.
 
