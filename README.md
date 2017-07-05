@@ -98,7 +98,17 @@ statistics are stored - very accurate but very slow and often unnecessary).
 
 This method is also quite inaccurate. Sampling stacktrace every 20ms means that we have no idea what's going
 on during those 20ms inbetween samplings. Thus, if a method is sampled only once, we cannot check whether
-the method took less than 1ms to run, or whether it took 39ms. To remedy this, you can increase the sampling rate to 2ms
-to obtain more accurate results while still maintaining minor performance hit. However, this is often not required.
+the method took less than 1ms to run, or whether it took 39ms. To remedy this, you can increase the sampling rate to 10ms
+(or even 2ms) to obtain more accurate results while still maintaining minor performance hit. However, this is often not required.
 
-Usually what you hunt for is where your code spends 200ms or more. todo
+Usually what you hunt for is where your code spends 200ms or more. And that is something we can
+detect with high accuracy. If a method is present in multiple samplings, then there is a high
+probability that that method was running quite long. Of course there is the possibility that
+the method was called repeatedly, ran shortly and was captured in multiple stack samplings,
+but the probability of this is very low.
+
+To conclude:
+
+* Ignore methods present in just one sample (they are marked with the less-than sign, such as >1%)
+* Focus on long-running methods, and dissect them until you find a culprit
+* Remember that there is a very low probability that the profiler is lying to you :-)
