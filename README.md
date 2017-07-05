@@ -21,7 +21,7 @@ Please see [the introductionary video](https://www.youtube.com/watch?v=LhPLXStYe
 
 ## Demo
 
-We're going to profile the [sample main method](tree/master/src/main/kotlin/com/github/mvysny/sucklessprofiler/SucklessProfiler.kt#L252) which looks like this:
+We're going to profile the [sample main method](src/main/kotlin/com/github/mvysny/sucklessprofiler/SucklessProfiler.kt#L252) which looks like this:
 ```kotlin
 Thread.sleep(500)
 println(URL("https://aedict-online.eu").readText())
