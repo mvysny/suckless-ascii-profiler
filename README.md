@@ -5,9 +5,19 @@ the console:
 
 ![Profiler Console](docs/images/profiler_console.png)
 
-* Uses thread stacktrace sampling, so the overhead is really small. The accuracy
+* Identifies longest-running methods in your code. Just follow the largest percentage trail.
+* Uses thread stacktrace sampling, so the overhead is negligible. The accuracy
 is not that great, but it definitely can identify the bottleneck in your code.
 * IDE turns the console log into clickable links so you can navigate into your code easily
+
+What it's not:
+
+* Remote profiler - cannot connect to a remote JVM
+* Debugger
+* It doesn't gather JVM/system statistics like CPU usage, memory usage and/or disk usage.
+* You need an initial hunch on where your code is actually slow, so that you can place the `profile` method around the code.
+
+Please see [the introductionary video](https://www.youtube.com/watch?v=LhPLXStYePw) for more details.
 
 ## Demo
 
@@ -78,3 +88,17 @@ class MyUIServlet : VaadinServlet() {
     }
 }
 ```
+
+#### About Stacktrace Sampling
+
+A thread stacktrace is captured every 20ms (configurable) into a list of stacktrace samples. That list
+is afterwards converted to a tree, and the time spent is assigned. This method is very non-intrusive:
+you don't have to start a Java agent, as opposed to the tracing method (where every method is intercepted and call
+statistics are stored - very accurate but very slow and often unnecessary).
+
+This method is also quite inaccurate. Sampling stacktrace every 20ms means that we have no idea what's going
+on during those 20ms inbetween samplings. Thus, if a method is sampled only once, we cannot check whether
+the method took less than 1ms to run, or whether it took 39ms. To remedy this, you can increase the sampling rate to 2ms
+to obtain more accurate results while still maintaining minor performance hit. However, this is often not required.
+
+Usually what you hunt for is where your code spends 200ms or more. todo
