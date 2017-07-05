@@ -298,12 +298,17 @@ private class PrettyPrintTreeNode(internal val name: String, internal val childr
     }
 }
 
-fun main(args: Array<String>) {
+private fun profilingDemo() {
     SucklessProfiler().apply {
+        leftPaneSizeChars = 70
         coloredDump = true
     }.profile {
         Thread.sleep(500)
         println(URL("https://aedict-online.eu").readText())
         Thread.sleep(500)
     }
+}
+
+fun main(args: Array<String>) {
+    profilingDemo()
 }
