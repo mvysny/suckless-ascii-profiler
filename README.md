@@ -72,7 +72,7 @@ SucklessProfiler().apply {
 }   // this will call the stop() method and will dump the profiling info into the console 
 ```
 
-or in your Vaadin Servlet:
+or in your (Vaadin) Servlet:
 
 ```kotlin
 @WebServlet(urlPatterns = arrayOf("/*"), name = "MyUIServlet", asyncSupported = true)
