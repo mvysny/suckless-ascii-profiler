@@ -69,7 +69,7 @@ SucklessProfiler().apply {
     Thread.sleep(500)
     println(URL("https://aedict-online.eu").readText())
     Thread.sleep(500)
-}
+}   // this will call the stop() method and will dump the profiling info into the console 
 ```
 
 or in your Vaadin Servlet:
