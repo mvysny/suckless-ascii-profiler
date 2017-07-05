@@ -92,14 +92,14 @@ class MyUIServlet : VaadinServlet() {
 #### About Stacktrace Sampling
 
 A thread stacktrace is captured every 20ms (configurable) into a list of stacktrace samples. That list
-is afterwards converted to a tree, and the time spent is assigned. This method is very non-intrusive:
+is afterwards converted to a tree, and the time spent is assigned. Stacktrace sampling is non-intrusive:
 you don't have to start a Java agent, as opposed to the tracing method (where every method is intercepted and call
-statistics are stored - very accurate but very slow and often unnecessary).
+statistics are stored - very accurate but very slow and often unnecessary). It will thus profile a real code execution.
 
-This method is also quite inaccurate. Sampling stacktrace every 20ms means that we have no idea what's going
+Stacktrace sampling is also unfortunately quite inaccurate. Sampling stacktrace every 20ms means that we have no idea what's going
 on during those 20ms inbetween samplings. Thus, if a method is sampled only once, we cannot check whether
 the method took less than 1ms to run, or whether it took 39ms. To remedy this, you can increase the sampling rate to 10ms
-(or even 2ms) to obtain more accurate results while still maintaining minor performance hit. However, this is often not required.
+(or even 2ms) to obtain more accurate results while still maintaining quite minor performance hit. However, this is often not required.
 
 Usually what you hunt for is where your code spends 200ms or more. And that is something we can
 detect with high accuracy. If a method is present in multiple samplings, then there is a high
