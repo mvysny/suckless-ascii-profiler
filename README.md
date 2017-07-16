@@ -47,7 +47,7 @@ repositories {
     maven { url "https://dl.bintray.com/mvysny/github/" }
 }
 dependencies {
-    compile "com.github.mvysny.sucklessprofiler:suckless-profiler:0.2"
+    compile "com.github.mvysny.sucklessprofiler:suckless-profiler:0.3"
 }
 ```
 
@@ -82,6 +82,7 @@ class MyUIServlet : VaadinServlet() {
         SucklessProfiler().apply {
             coloredDump = true
             pruneStacktraceBottom = true
+            dumpOnlyProfilingsLongerThan = Duration.ofSeconds(2)
         }.profile {
             super.service(request, response)
         }
