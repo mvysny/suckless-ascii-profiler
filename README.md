@@ -124,6 +124,6 @@ The overhead is very low as compared to tracing, yet there still is a very minor
 * Taking a thread stack trace will pause the sampled JVM thread briefly
 
 Thus, the profiler will use a bit of CPU and memory. However, as long as your app is not eating 100%
-CPU and is taking nearly all of your JVM's memory, this overhead will not slow down your app.
+CPU and is not taking nearly all of your JVM's memory, this overhead will not slow down your app.
 Your app will be slowed down by the JVM being paused while the stack trace is taken, however this
 pause is generally just a couple of nanoseconds and therefore negligible.
