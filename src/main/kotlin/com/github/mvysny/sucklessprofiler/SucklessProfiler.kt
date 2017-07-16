@@ -28,17 +28,18 @@ class SucklessProfiler {
     var dontProfilePackages: List<String> = listOf("java.*", "javax.*", "sun.*", "sunw.*", "com.sun.*", "jdk.*")
 
     /**
-     * Sample the thread stacktrace each 20 milliseconds.
+     * Sample the thread stacktrace each 20 milliseconds by default. Since the profiler introduces very low overhead,
+     * even values as low as 2 milliseconds may be reasonable.
      */
     var sampleEachMs: Int = 20
 
     /**
-     * The size of the left pane, in characters. Decrease if you know your stacktraces won't be deep.
+     * The size of the left pane when pretty-printing the profiler dump to console, in characters. Decrease if you know your stacktraces won't be deep.
      */
     var leftPaneSizeChars: Int = 100
 
     /**
-     * Useful for profiling servlets: removes the unnecessary stacktrace all the way from Thread.run through http server's
+     * Useful for profiling servlets: removes the unnecessary stacktrace all the way from [Thread.run] through http server's
      * parsing code, the filter chain and jumps straight into the servlet code.
      */
     var pruneStacktraceBottom: Boolean = false
