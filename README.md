@@ -119,7 +119,7 @@ To conclude:
 
 The overhead is very low as compared to tracing, yet there still is a very minor overhead:
 
-* The profiler will start 3 threads for its own purpose, to collect samples.
+* The profiler will start 3 threads per JVM for its own purpose, to collect samples.
 * During the sampling, the stacktrace samples are stored in-memory
 * Taking a thread stack trace will pause the sampled JVM thread briefly
 
