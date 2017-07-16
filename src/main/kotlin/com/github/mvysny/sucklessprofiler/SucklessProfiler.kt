@@ -2,6 +2,7 @@ package com.github.mvysny.sucklessprofiler
 
 import java.net.URL
 import java.text.DecimalFormat
+import java.time.Duration
 import java.util.*
 import java.util.concurrent.*
 
@@ -43,6 +44,12 @@ class SucklessProfiler {
     var pruneStacktraceBottom: Boolean = false
 
     /**
+     * Often dumping all web requests will produce a lot of clutter; we often want to not to dump any info for short requests which
+     * show no performance bottlenecks. Just set this value to `Duration.ofSeconds(2)` to ignore short requests.
+     */
+    var dumpOnlyProfilingsLongerThan: Duration = Duration.ZERO
+
+    /**
      * Starts to profile this thread. There is no support for profiling multiple threads.
      */
     fun start() {
@@ -64,22 +71,29 @@ class SucklessProfiler {
     }
 
     /**
-     * Stops the profiler and dumps the data obtained.
+     * Stops the profiler and by default dumps the data obtained. This method *must* be called to stop the profiling thread
+     * to watch this thread endlessly and needlessly, wasting both CPU cycles and memory (since the stacktrace samples are
+     * stored in-memory).
+     * @param dumpProfilingInfo defaults to true. If false, nothing is dumped - collected profiling info is just thrown away.
      */
-    fun stop() {
+    fun stop(dumpProfilingInfo: Boolean = true) {
         val totalTime = System.currentTimeMillis() - startedAt
         started = false
         sampler.stop()
         samplerFuture.get()
-        // only now it is safe to access Sampler since Future.get() forms the happens-before relation
-        // don't print directly to stdout - there may be multiple profilings ongoing, and we don't want those println to interleave.
-        val sb = StringBuilder()
-        sb.append("====================================================================\n")
-        sb.append("Result of profiling of $sampler: ${totalTime}ms, ${sampler.tree.sampleCount} samples\n")
-        sb.append("====================================================================\n")
-        sampler.tree.cutStacktraces(dontProfilePackages).dump(sb, this, totalTime)
-        sb.append("====================================================================\n")
-        println(sb)
+
+        val dump = dumpProfilingInfo && totalTime >= dumpOnlyProfilingsLongerThan.toMillis()
+        if (dump) {
+            // only now it is safe to access Sampler since Future.get() forms the happens-before relation
+            // don't print directly to stdout - there may be multiple profilings ongoing, and we don't want those println to interleave.
+            val sb = StringBuilder()
+            sb.append("====================================================================\n")
+            sb.append("Result of profiling of $sampler: ${totalTime}ms, ${sampler.tree.sampleCount} samples\n")
+            sb.append("====================================================================\n")
+            sampler.tree.cutStacktraces(dontProfilePackages).dump(sb, this, totalTime)
+            sb.append("====================================================================\n")
+            println(sb)
+        }
     }
 }
 
