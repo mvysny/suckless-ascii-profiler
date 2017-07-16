@@ -12,7 +12,7 @@ import java.util.concurrent.*
  * Every profiler instance can be used only once. Calling [start] multiple times leads to undefined results.
  */
 class SucklessProfiler {
-    private lateinit var samplerFuture: Future<*>
+    private lateinit var samplerFuture: ScheduledFuture<*>
     private lateinit var sampler: StacktraceSampler
     @Volatile private var started = false
     private var startedAt = System.currentTimeMillis()
@@ -54,8 +54,8 @@ class SucklessProfiler {
      */
     fun start() {
         started = true
-        sampler = StacktraceSampler(Thread.currentThread(), sampleEachMs)
-        samplerFuture = executor.submit(sampler, Unit)
+        sampler = StacktraceSampler(Thread.currentThread())
+        samplerFuture = executor.scheduleAtFixedRate(sampler, 0, sampleEachMs.toLong(), TimeUnit.MILLISECONDS)
     }
 
     /**
@@ -79,8 +79,8 @@ class SucklessProfiler {
     fun stop(dumpProfilingInfo: Boolean = true) {
         val totalTime = System.currentTimeMillis() - startedAt
         started = false
-        sampler.stop()
-        samplerFuture.get()
+        samplerFuture.cancel(false)
+        val tree = sampler.copy()
 
         val dump = dumpProfilingInfo && totalTime >= dumpOnlyProfilingsLongerThan.toMillis()
         if (dump) {
@@ -88,61 +88,77 @@ class SucklessProfiler {
             // don't print directly to stdout - there may be multiple profilings ongoing, and we don't want those println to interleave.
             val sb = StringBuilder()
             sb.append("====================================================================\n")
-            sb.append("Result of profiling of $sampler: ${totalTime}ms, ${sampler.tree.sampleCount} samples\n")
+            sb.append("Result of profiling of $sampler: ${totalTime}ms, ${tree.sampleCount} samples\n")
             sb.append("====================================================================\n")
-            sampler.tree.cutStacktraces(dontProfilePackages).dump(sb, this, totalTime)
+            tree.cutStacktraces(dontProfilePackages).dump(sb, this, totalTime)
             sb.append("====================================================================\n")
             println(sb)
         }
     }
 }
 
-private val executor = ThreadPoolExecutor(0, Integer.MAX_VALUE,
-        3L, TimeUnit.SECONDS,
-        SynchronousQueue<Runnable>(),
-        ThreadFactory { runnable ->
+// oh crap: ScheduledExecutorService acts as a fixed-sized pool using corePoolSize threads and an unbounded queue, adjustments to maximumPoolSize have no useful effect?!?
+// better have more core pool threads then.
+private val executor = Executors.newScheduledThreadPool(3, { runnable ->
     val t = Thread(runnable)
+    t.name = "Suckless Profiler Thread"
     t.isDaemon = true
     t
 })
 
-private class StacktraceSampler(val threadToProfile: Thread, val sampleDelayMs: Int) : Runnable {
-    val nameOfThreadToProfile = threadToProfile.name
-    val tree = StacktraceSamples()
-    private val stopLatch = CountDownLatch(1)
-
-    fun stop() {
-        stopLatch.countDown()
-    }
+/**
+ * Periodically invoked by the [executor], collects one stacktrace sample per invocation.
+ */
+private class StacktraceSampler(val threadToProfile: Thread) : Runnable {
+    val nameOfThreadToProfile: String = threadToProfile.name
+    private val samples = ConcurrentLinkedQueue<StacktraceSamples.Sample>()
+    // guarded-by: happens-before relationship guaranteed by ScheduledThreadPoolExecutor
+    private var lastStacktraceSampleAt = System.currentTimeMillis()
+    /**
+     * Thread-safe and safe to call at any time, since [samples] is thread-safe.
+     */
+    fun copy() = StacktraceSamples(samples.toList())
 
     override fun run() {
-        Thread.currentThread().name = "SucklessProfiler of $nameOfThreadToProfile"
         try {
-            var lastStacktraceSampleAt = System.currentTimeMillis()
-            while (true) {
+            // having the run() guarded by synchronized(lock) this will generally perform very well, since the executor will reuse one thread to run all samplers.
+            // however, if the contention is really high (lots of samplers running in parallel), this may be a performance bottleneck?
+            // yet, removing this synchronized block would leave `lastStacktraceSampleAt` unguarded... yet perhaps there is a happens-before
+            // relationship guaranteed by the executor between multiple invocations of the same runnable?
+
+            // AHA! Yes: https://docs.oracle.com/javase/7/docs/api/java/util/concurrent/ScheduledThreadPoolExecutor.html
+            // Successive executions of a task scheduled via scheduleAtFixedRate or scheduleWithFixedDelay do not overlap.
+            // While different executions may be performed by different threads, the effects of prior executions happen-before those of subsequent ones.
+
+            // peachy. How can I now, upon cancelation, await for the ongoing call to finish?
+            // I don't! Since `samples` is thread-safe, I can just create a copy of whatever the sampler collected at any time, and work on that.
+//            synchronized(lock) {
                 val now = System.currentTimeMillis()
-                tree.add(threadToProfile.stackTrace, (now - lastStacktraceSampleAt).toInt())
-                lastStacktraceSampleAt = now
-                if (stopLatch.await(sampleDelayMs.toLong(), TimeUnit.MILLISECONDS)) break
+            val trace = threadToProfile.stackTrace
+            if (trace.isNotEmpty()) {
+                samples.add(StacktraceSamples.Sample(trace, (now - lastStacktraceSampleAt).toInt()))
             }
-        } catch (t: InterruptedException) {
-            // expected after the end of the profiling
+                lastStacktraceSampleAt = now
+//            }
         } catch (t: Throwable) {
-            println("Sampling thread $this died!!!!")
+            println("Sampling of $this failed!")
             t.printStackTrace()
         }
     }
 
-    override fun toString() = "$nameOfThreadToProfile, sampleDelayMs=$sampleDelayMs"
+    override fun toString() = nameOfThreadToProfile
 }
 
-private class StacktraceSamples {
+/**
+ * An immutable copy of samples, produced after the actual sampling finishes. Therefore, this class doesn't need to be optimized much.
+ */
+private class StacktraceSamples(val samples: List<Sample>) {
     /**
      * A stacktrace sample at some arbitrary time.
      * @property stacktrace the stacktrace. Note that it is reversed: 0th item is the most nested method call; last item is probably something like `Thread.run()`.
      * @property durationMs the actual delay between previous sample and this one.
      */
-    private class Sample(val stacktrace: Array<StackTraceElement>, val durationMs: Int) {
+    class Sample(val stacktrace: Array<StackTraceElement>, val durationMs: Int) {
         /**
          * Cuts the stacktrace so that all nested calls matching [classNameRegex] are removed.
          * @param classNameRegex e.g. java.*|javax.*; basically collapses all calls to these uninteresting methods.
@@ -159,22 +175,13 @@ private class StacktraceSamples {
         }
     }
 
-    private val samples = LinkedList<Sample>()
-
     val sampleCount: Int get() = samples.size
-
-    fun add(stacktrace: Array<StackTraceElement>, durationMs: Int) {
-        if (stacktrace.isEmpty()) return
-        samples.add(Sample(stacktrace, durationMs))
-    }
 
     fun cutStacktraces(cutpoints: List<String>): StacktraceSamples {
         if (cutpoints.isEmpty()) return this
         val regex = cutpoints.map { it.replace(".", "\\.").replace("*", ".*") }.joinToString("|").toRegex()
         val cutSamples = samples.map { it.cut(regex) }.filterNot { it.stacktrace.isEmpty() }
-        val samples = StacktraceSamples()
-        samples.samples.addAll(cutSamples)
-        return samples
+        return StacktraceSamples(cutSamples)
     }
 
     private class Dumper(private val roots: List<Node>) {
