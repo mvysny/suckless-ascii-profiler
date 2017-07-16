@@ -114,3 +114,16 @@ To conclude:
 * Ignore methods present in just one sample (they are marked with the less-than sign, such as >1%)
 * Focus on long-running methods, and dissect them until you find a culprit
 * Remember that there is a very low probability that the profiler is lying to you :-)
+
+### Overhead
+
+The overhead is very low as compared to tracing, yet there still is a very minor overhead:
+
+* The profiler will start 3 threads for its own purpose, to collect samples.
+* During the sampling, the stacktrace samples are stored in-memory
+* Taking a thread stack trace will pause the sampled JVM thread briefly
+
+Thus, the profiler will use a bit of CPU and memory. However, as long as your app is not eating 100%
+CPU and is taking nearly all of your JVM's memory, this overhead will not slow down your app.
+Your app will be slowed down by the JVM being paused while the stack trace is taken, however this
+pause is generally just a couple of nanoseconds and therefore negligible.
