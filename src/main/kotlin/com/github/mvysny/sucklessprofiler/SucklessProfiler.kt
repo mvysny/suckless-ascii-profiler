@@ -6,6 +6,17 @@ import java.time.Duration
 import java.util.*
 import java.util.concurrent.*
 
+enum class TimeFormatEnum {
+    Percentage {
+        override fun format(stackDuration: Duration, totalDuration: Duration) =
+            DecimalFormat("#.#%").format(stackDuration.toMillis().toFloat() / totalDuration.toMillis())
+    },
+    Millis {
+        override fun format(stackDuration: Duration, totalDuration: Duration) = "${stackDuration.toMillis()}ms"
+    };
+    abstract fun format(stackDuration: Duration, totalDuration: Duration): String
+}
+
 /**
  * The profiler. Create a new instance, configure it, then call [start]+[stop] or [profile].
  *
@@ -50,6 +61,8 @@ class SucklessProfiler {
      */
     var dumpOnlyProfilingsLongerThan: Duration = Duration.ZERO
 
+    var timeFormat: TimeFormatEnum = TimeFormatEnum.Percentage
+
     /**
      * Starts to profile this thread. There is no support for profiling multiple threads.
      */
@@ -78,18 +91,18 @@ class SucklessProfiler {
      * @param dumpProfilingInfo defaults to true. If false, nothing is dumped - collected profiling info is just thrown away.
      */
     fun stop(dumpProfilingInfo: Boolean = true) {
-        val totalTime = System.currentTimeMillis() - startedAt
+        val totalTime = Duration.ofMillis(System.currentTimeMillis() - startedAt)
         started = false
         samplerFuture.cancel(false)
         val tree = sampler.copy()
 
-        val dump = dumpProfilingInfo && totalTime >= dumpOnlyProfilingsLongerThan.toMillis()
+        val dump = dumpProfilingInfo && totalTime >= dumpOnlyProfilingsLongerThan
         if (dump) {
             // only now it is safe to access Sampler since Future.get() forms the happens-before relation
             // don't print directly to stdout - there may be multiple profilings ongoing, and we don't want those println to interleave.
             val sb = StringBuilder()
             sb.append("====================================================================\n")
-            sb.append("Result of profiling of $sampler: ${totalTime}ms, ${tree.sampleCount} samples\n")
+            sb.append("Result of profiling of $sampler: ${totalTime.toMillis()}ms, ${tree.sampleCount} samples\n")
             sb.append("====================================================================\n")
             tree.cutStacktraces(dontProfilePackages).dump(sb, this, totalTime)
             sb.append("====================================================================\n")
@@ -172,7 +185,7 @@ private class StacktraceSamples(val samples: List<Sample>) {
             if (firstNonMatching > 0) {
                 firstNonMatching-- // include the function itself, so it is clear which java. or javax. function it was.
             }
-            return Sample(stacktrace.sliceArray(firstNonMatching..stacktrace.size - 1), durationMs)
+            return Sample(stacktrace.sliceArray(firstNonMatching until stacktrace.size), durationMs)
         }
     }
 
@@ -212,7 +225,7 @@ private class StacktraceSamples(val samples: List<Sample>) {
                         val node: Node
                         if (parentNode == null) {
                             node = roots.getOrPut(element) { Node(element) }
-                            roots.put(element, node)
+                            roots[element] = node
                         } else {
                             node = parentNode.children.getOrPut(element) { Node(element) }
                         }
@@ -242,9 +255,7 @@ private class StacktraceSamples(val samples: List<Sample>) {
             }
         }
 
-        fun dump(sb: StringBuilder, colored: Boolean, totalTime: Long, leftPaneSizeChars: Int) {
-
-            fun Long.percentOfTime() = DecimalFormat("#.#%").format(toFloat() / totalTime)
+        fun dump(sb: StringBuilder, colored: Boolean, totalTime: Duration, leftPaneSizeChars: Int, timeFormat: TimeFormatEnum) {
 
             /**
              * Converts our stack node into the [PrettyPrintTreeNode] which will then pretty-print itself.
@@ -273,13 +284,13 @@ private class StacktraceSamples(val samples: List<Sample>) {
                     append("total ")
                     appendColor("\u001B[33m")
                     if (node.occurences <= 1) append('>')
-                    append(node.totalTime.percentOfTime())
+                    append(timeFormat.format(Duration.ofMillis(node.totalTime), totalTime))
                     appendColor("\u001B[0m")
                     if (node.children.isEmpty() || node.ownTime > 0) {
                         append(" / own ")
                         appendColor("\u001B[32m")
                         if (node.occurences <= 1) append('>')
-                        append(node.ownTime.percentOfTime())
+                        append(timeFormat.format(Duration.ofMillis(node.ownTime), totalTime))
                         appendColor("\u001B[0m")
                     }
                     // right pane: stacktrace element so that the programmer can ctrl+click
@@ -297,8 +308,8 @@ private class StacktraceSamples(val samples: List<Sample>) {
         }
     }
 
-    fun dump(sb: StringBuilder, config: SucklessProfiler, totalTime: Long) {
-        Dumper.parse(this, config.pruneStacktraceBottom).dump(sb, config.coloredDump, totalTime, config.leftPaneSizeChars)
+    fun dump(sb: StringBuilder, config: SucklessProfiler, totalTime: Duration) {
+        Dumper.parse(this, config.pruneStacktraceBottom).dump(sb, config.coloredDump, totalTime, config.leftPaneSizeChars, config.timeFormat)
     }
 }
 
@@ -324,6 +335,7 @@ private fun profilingDemo() {
     SucklessProfiler().apply {
         leftPaneSizeChars = 70
         coloredDump = true
+        timeFormat = TimeFormatEnum.Millis
     }.profile {
         Thread.sleep(500)
         println(URL("https://aedict-online.eu").readText())
