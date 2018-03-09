@@ -50,6 +50,8 @@ class SucklessProfiler {
     var leftPaneSizeChars: Int = 100
 
     /**
+     * Removes the common stack frames starting at [Thread.run] that all stacktrace samplings share, leaving only the parts that do differ.
+     *
      * Useful for profiling servlets: removes the unnecessary stacktrace all the way from [Thread.run] through http server's
      * parsing code, the filter chain and jumps straight into the servlet code.
      */
@@ -208,14 +210,14 @@ private class StacktraceSamples(val samples: List<Sample>) {
 
             override fun toString() = "Node(element=$element, ownTime=$ownTime, totalTime=$totalTime, occurences=$occurences)"
 
-            fun pruneStacktraceTop(): Node = when {
-                children.size == 1 -> children.values.first().pruneStacktraceTop()
+            fun pruneStacktraceBottom(): Node = when {
+                children.size == 1 -> children.values.first().pruneStacktraceBottom()
                 else -> this
             }
         }
 
         companion object {
-            fun parse(tree: StacktraceSamples, pruneStacktraceTop: Boolean): Dumper {
+            fun parse(tree: StacktraceSamples, pruneStacktraceBottom: Boolean): Dumper {
                 val roots = LinkedHashMap<StackTraceElement, Node>()
 
                 // first, compute the 'roots' tree.
@@ -247,8 +249,8 @@ private class StacktraceSamples(val samples: List<Sample>) {
                 }
 
                 var root = roots.values.toList()
-                if (pruneStacktraceTop) {
-                    root = root.map { it.pruneStacktraceTop() }
+                if (pruneStacktraceBottom) {
+                    root = root.map { it.pruneStacktraceBottom() }
                 }
 
                 return Dumper(root)
