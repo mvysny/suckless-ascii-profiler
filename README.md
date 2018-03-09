@@ -47,9 +47,12 @@ repositories {
     maven { url "https://dl.bintray.com/mvysny/github/" }
 }
 dependencies {
-    compile "com.github.mvysny.sucklessprofiler:suckless-profiler:0.3"
+    compile "com.github.mvysny.sucklessprofiler:suckless-profiler:x.y"
 }
 ```
+
+> Note: obtain the newest version from the release name, and the tag name as well: [https://github.com/mvysny/suckless-ascii-profiler/releases](https://github.com/mvysny/suckless-ascii-profiler/releases)
+
 
 Then, in your code, just call the following:
 
