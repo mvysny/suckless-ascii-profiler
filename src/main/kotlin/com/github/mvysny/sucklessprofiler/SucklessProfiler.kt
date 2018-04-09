@@ -40,6 +40,9 @@ class SucklessProfiler {
 
     /**
      * At the end, calculate totals of how much time the program spent in particular libraries.
+     *
+     * The "IO/Net" is grouped together: for example the InputStream from a Socket (Net) is wrapped in a BufferedReader which would then count
+     * towards IO rather than towards the "Net".
      */
     var groupTotals: MutableMap<String, List<String>> = mapOf(
         "DB" to listOf("com.zaxxer.hikari.*", "org.mariadb.jdbc.*", "org.h2.*", "com.mysql.jdbc.*", "org.postgresql.*"),
