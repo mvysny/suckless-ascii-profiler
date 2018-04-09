@@ -1,3 +1,7 @@
+[![Build Status](https://travis-ci.org/mvysny/suckless-ascii-profiler.svg?branch=master)](https://travis-ci.org/mvysny/suckless-ascii-profiler)
+[![Join the chat at https://gitter.im/vaadin/vaadin-on-kotlin](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/vaadin/vaadin-on-kotlin?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![GitHub tag](https://img.shields.io/github/tag/mvysny/suckless-ascii-profiler.svg)](https://github.com/mvysny/suckless-ascii-profiler/tags)
+
 # Suckless ASCII Profiler
 
 An embedded JVM profiler which you start and stop at will from your code, and it will dump the profiling info into 
@@ -51,7 +55,7 @@ dependencies {
 }
 ```
 
-> Note: obtain the newest version from the release name, and the tag name as well: [https://github.com/mvysny/suckless-ascii-profiler/releases](https://github.com/mvysny/suckless-ascii-profiler/releases)
+> Note: please see the latest tag name above for the newest version
 
 
 Then, in your code, just call the following:
