@@ -18,6 +18,7 @@ mainClassName = "com.github.mvysny.sucklessprofiler.SucklessProfilerKt"
 repositories {
     mavenCentral()
 }
+
 dependencies {
     compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.2.31"
 }
