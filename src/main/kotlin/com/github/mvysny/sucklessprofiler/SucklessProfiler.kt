@@ -118,6 +118,13 @@ class SucklessProfiler {
             sb.append("====================================================================\n")
             stackTree.dump(sb, coloredDump, totalTime, leftPaneSizeChars, timeFormat)
             sb.append("====================================================================\n")
+            val groupsDuration = tree.toStackTree(false).calculateGroupTotals(groupTotals).entries.filter { it.value != 0L }
+            val groupDump = groupsDuration.map { e ->
+                val d = Duration.ofMillis(e.value)
+                "${e.key}: ${TimeFormatEnum.Millis.format(d, totalTime)} (${TimeFormatEnum.Percentage.format(d, totalTime)})"
+            }
+            sb.append("Total: ${totalTime.toMillis()}ms [${groupDump.joinToString(", ")}]\n")
+            sb.append("====================================================================\n")
             println(sb)
         }
 

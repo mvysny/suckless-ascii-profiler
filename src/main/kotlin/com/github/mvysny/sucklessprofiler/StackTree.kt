@@ -88,13 +88,30 @@ class StackTree(val roots: List<Node>) {
     }
 
     /**
-     * Calculates summary durations of various libraries
-     * @param groups calculate totals of how much time the program spent in particular libraries.
+     * Calculates summary durations of various libraries.
+     *
+     * Note: if a package is matched for one group, the algorithm does not dig deeper into child stack traces! Therefore, if your class
+     * matches some group and performs a DB or IO, the DB/IO time is not considered.
+     * @param groups calculate totals of how much time the program spent in particular libraries. Maps a human-readable group name (e.g. "DB")
+     * to a list of package names to match (e.g. `listOf("com.zaxxer.hikari.*", "org.mariadb.jdbc.*")`.
      * @return totals, keyed by [groups] keys, mapping to millis duration.
      */
     fun calculateGroupTotals(groups: Map<String, List<String>>): Map<String, Long> {
         val totals: MutableMap<String, Long> = groups.keys.associate { it to 0L } .toMutableMap()
+        val globs = groups.mapValues { Glob(it.value) }
+        fun walkNodes(nodes: Collection<Node>) {
+            for (node in nodes) {
+                val matchingGroupName: String? = globs.entries.firstOrNull { it.value.matches(node.element) } ?.key
+                if (matchingGroupName != null) {
+                    // match! Append the node time towards the total for given group/key.
+                    totals.compute(matchingGroupName, { k, v -> (v ?: 0L) + node.totalTime })
+                } else {
+                    // no match, search its children.
+                    walkNodes(node.children.values)
+                }
+            }
+        }
+        walkNodes(roots)
         return totals
     }
 }
-
