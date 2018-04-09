@@ -27,8 +27,14 @@ class SucklessProfiler {
     private lateinit var sampler: StacktraceSampler
     @Volatile private var started = false
     private var startedAt = System.currentTimeMillis()
+
     /**
-     * Set to true to obtain a nice colored output.
+     * Whether [stop] and [profile] will dump profiling info. Defaults to true.
+     */
+    var dump: Boolean = true
+
+    /**
+     * Set to true to obtain a nice colored output. Defaults to `false`.
      */
     var coloredDump: Boolean = false
 
@@ -86,14 +92,15 @@ class SucklessProfiler {
     }
 
     /**
-     * Profiles given block. A shorthand for calling [start], then your code, then [stop]. Dumps the data obtained.
+     * Profiles given block. A shorthand for calling [start], then your code, then [stop]. Dumps the data obtained, and returns the
+     * stack tree which you can examine further.
      */
-    inline fun profile(block: () -> Unit) {
+    inline fun profile(block: () -> Unit): StackTree {
         start()
         try {
             block()
         } finally {
-            stop()
+            return stop()
         }
     }
 
@@ -111,7 +118,7 @@ class SucklessProfiler {
         val cutTree = tree.cutStacktraces(dontProfilePackages)
         val stackTree = cutTree.toStackTree(pruneStacktraceBottom)
 
-        val dump = dumpProfilingInfo && totalTime >= dumpOnlyProfilingsLongerThan
+        val dump = dumpProfilingInfo && this.dump && totalTime >= dumpOnlyProfilingsLongerThan
         if (dump) {
             // only now it is safe to access Sampler since Future.get() forms the happens-before relation
             // don't print directly to stdout - there may be multiple profilings ongoing, and we don't want those println to interleave.
