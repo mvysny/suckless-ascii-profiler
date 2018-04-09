@@ -17,10 +17,12 @@ mainClassName = "com.github.mvysny.sucklessprofiler.SucklessProfilerKt"
 
 repositories {
     mavenCentral()
+    maven { url "https://dl.bintray.com/mvysny/github" }
 }
 
 dependencies {
     compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.2.31"
+    testCompile("com.github.mvysny.dynatest:dynatest:0.8")
 }
 
 task sourceJar(type: Jar, dependsOn: classes) {
@@ -64,5 +66,14 @@ bintray {
             name = project.version
             released = new Date()
         }
+    }
+}
+
+test {
+    useJUnitPlatform()
+    testLogging {
+        // to see the exceptions of failed tests in Travis-CI console. Seems to be ignored:
+        // https://github.com/gradle/gradle/issues/4681
+        exceptionFormat = 'full'
     }
 }
