@@ -36,15 +36,15 @@ class SucklessProfiler {
      * Don't profile classes from any of the package that matches these globs. Basically, any class matching these globs will
      * be counted towards the own time of the callee method.
      */
-    var dontProfilePackages: List<String> = listOf("java.*", "javax.*", "sun.*", "sunw.*", "com.sun.*", "jdk.*")
+    var dontProfilePackages: MutableList<String> = listOf("java.*", "javax.*", "sun.*", "sunw.*", "com.sun.*", "jdk.*").toMutableList()
 
     /**
      * At the end, calculate totals of how much time the program spent in particular libraries.
      */
-    var groupTotals: Map<String, List<String>> = mapOf(
+    var groupTotals: MutableMap<String, List<String>> = mapOf(
         "DB" to listOf("com.zaxxer.hikari.*", "org.mariadb.jdbc.*", "org.h2.*", "com.mysql.jdbc.*", "org.postgresql.*"),
         "IO/Net" to listOf("java.io.*", "java.net.*", "javax.net.*")
-    )
+    ).toMutableMap()
 
     /**
      * Sample the thread stacktrace each 20 milliseconds by default. Since the profiler introduces very low overhead,
