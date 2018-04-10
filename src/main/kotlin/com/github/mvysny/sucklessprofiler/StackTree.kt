@@ -5,7 +5,10 @@ import java.time.Duration
 /**
  * Represents a stack tree - a call history. Every node contains a pointer to a class+method, time spent etc.
  */
-class StackTree(val roots: List<Node>) {
+class StackTree(val totalTime: Duration, val roots: List<Node>) {
+    init {
+        require(totalTime >= Duration.ZERO) { "Got negative totalTime $totalTime" }
+    }
 
     /**
      * A node in the stack tree. Contains a pointer to the class+method where the program spent time, the time that was spent etc.
@@ -40,7 +43,7 @@ class StackTree(val roots: List<Node>) {
     /**
      * Prunes a path with no fork from this node down into its children.
      */
-    fun withStacktraceTopPruned() = StackTree(roots.map { it.withStacktraceTopPruned() } )
+    fun withStacktraceTopPruned() = StackTree(totalTime, roots.map { it.withStacktraceTopPruned() } )
 
     /**
      * Returns a new stack tree with nodes matching given [glob] collapsed.
@@ -51,7 +54,7 @@ class StackTree(val roots: List<Node>) {
         } else {
             node.copy(children = node.children.map { collapseIfMatches(it) })
         }
-        return StackTree(roots.map { collapseIfMatches(it) })
+        return StackTree(totalTime, roots.map { collapseIfMatches(it) })
     }
 
     /**
@@ -59,7 +62,7 @@ class StackTree(val roots: List<Node>) {
      * @param timeFormat the format to print the time in.
      * @param leftPaneSizeChars how many characters to pad the right stacktrace pointer.
      */
-    fun dump(sb: StringBuilder, colored: Boolean, totalTime: Duration, leftPaneSizeChars: Int, timeFormat: TimeFormatEnum) {
+    fun dump(sb: StringBuilder, colored: Boolean, leftPaneSizeChars: Int, timeFormat: TimeFormatEnum) {
 
         /**
          * Converts our stack node into the [PrettyPrintTree] which will then pretty-print itself.
