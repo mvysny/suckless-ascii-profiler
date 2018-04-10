@@ -68,11 +68,19 @@ class CallTree(val totalTime: Duration, val roots: List<Node>) {
     }
 
     /**
+     * Returns a pretty tree. The tree is optionally [colored].
+     * @param timeFormat the format to print the time in.
+     * @param leftPaneSizeChars how many characters to pad the right stacktrace pointer.
+     */
+    fun prettyPrint(colored: Boolean = false, leftPaneSizeChars: Int = 40, timeFormat: TimeFormatEnum = TimeFormatEnum.Percentage): String =
+        buildString { prettyPrintTo(this, colored, leftPaneSizeChars, timeFormat) }
+
+    /**
      * Dumps a pretty tree into the string builder. The tree is optionally [colored].
      * @param timeFormat the format to print the time in.
      * @param leftPaneSizeChars how many characters to pad the right stacktrace pointer.
      */
-    fun dump(sb: StringBuilder, colored: Boolean, leftPaneSizeChars: Int, timeFormat: TimeFormatEnum) {
+    fun prettyPrintTo(sb: StringBuilder, colored: Boolean, leftPaneSizeChars: Int, timeFormat: TimeFormatEnum) {
 
         /**
          * Converts our stack node into the [PrettyPrintTree] which will then pretty-print itself.

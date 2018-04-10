@@ -160,7 +160,7 @@ class SucklessProfiler {
                 st = st.withStacktraceTopPruned()
             }
             st = st.withCollapsed(soft = Glob(collapsePackagesSoft + collapsePackagesHard), hard = Glob(collapsePackagesHard))
-            st.dump(sb, coloredDump, leftPaneSizeChars, timeFormat)
+            st.prettyPrintTo(sb, coloredDump, leftPaneSizeChars, timeFormat)
             sb.append("====================================================================\n")
             val groups = tree.toCallTree(totalTime).calculateGroupTotals(groupTotals)
             sb.append(groups.prettyPrint(totalTime))
