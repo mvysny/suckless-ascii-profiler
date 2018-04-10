@@ -3,9 +3,9 @@ package com.github.mvysny.sucklessprofiler
 import java.time.Duration
 
 /**
- * Represents a stack tree - a call history. Every node contains a pointer to a class+method, time spent etc.
+ * Represents a call tree - a call history. Every node contains a pointer to a class+method, time spent etc.
  */
-class StackTree(val totalTime: Duration, val roots: List<Node>) {
+class CallTree(val totalTime: Duration, val roots: List<Node>) {
     init {
         require(totalTime >= Duration.ZERO) { "Got negative totalTime $totalTime" }
     }
@@ -48,20 +48,20 @@ class StackTree(val totalTime: Duration, val roots: List<Node>) {
     /**
      * Prunes a path with no fork from this node down into its children.
      */
-    fun withStacktraceTopPruned() = StackTree(totalTime, roots.map { it.withStacktraceTopPruned() } )
+    fun withStacktraceTopPruned() = CallTree(totalTime, roots.map { it.withStacktraceTopPruned() } )
 
     /**
      * Returns a new stack tree with nodes matching given pair of globs collapsed.
      * @param soft the 'soft' collapser - the node including the subtree must match in order to be collapsed.
      * @param hard the 'hard' collapser - it is enough that this node matches this glob.
      */
-    fun withCollapsed(soft: Glob = Glob.MATCH_NOTHING, hard: Glob = Glob.MATCH_NOTHING): StackTree {
+    fun withCollapsed(soft: Glob = Glob.MATCH_NOTHING, hard: Glob = Glob.MATCH_NOTHING): CallTree {
         fun collapseIfMatches(node: Node): Node = if (hard.matches(node.element) || node.treeMatches(soft)) {
             node.collapsed()
         } else {
             node.copy(children = node.children.map { collapseIfMatches(it) })
         }
-        return StackTree(totalTime, roots.map { collapseIfMatches(it) })
+        return CallTree(totalTime, roots.map { collapseIfMatches(it) })
     }
 
     /**

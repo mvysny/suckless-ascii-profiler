@@ -108,7 +108,7 @@ class SucklessProfiler {
      * Profiles given block. A shorthand for calling [start], then your code, then [stop]. Dumps the data obtained, and returns the
      * stack tree which you can examine further.
      */
-    inline fun profile(block: () -> Unit): StackTree {
+    inline fun profile(block: () -> Unit): CallTree {
         start()
         try {
             block()
@@ -124,12 +124,12 @@ class SucklessProfiler {
      * @param dumpProfilingInfo defaults to true. If false, nothing is dumped - collected profiling info is just thrown away.
      * @return the stack tree, unpruned and uncollapsed
      */
-    fun stop(dumpProfilingInfo: Boolean = true): StackTree {
+    fun stop(dumpProfilingInfo: Boolean = true): CallTree {
         val totalTime = Duration.ofMillis(System.currentTimeMillis() - startedAt)
         started = false
         samplerFuture.cancel(false)
         val tree: StacktraceSamples = sampler.copy()
-        val stackTree: StackTree = tree.toStackTree(totalTime)
+        val callTree: CallTree = tree.toCallTree(totalTime)
 
         val dump = dumpProfilingInfo && this.dump && totalTime >= dumpOnlyProfilingsLongerThan
         if (dump) {
@@ -139,20 +139,20 @@ class SucklessProfiler {
             sb.append("====================================================================\n")
             sb.append("Result of profiling of $sampler: ${totalTime.toMillis()}ms, ${tree.sampleCount} samples\n")
             sb.append("====================================================================\n")
-            var st = stackTree
+            var st = callTree
             if (pruneStacktraceTop) {
                 st = st.withStacktraceTopPruned()
             }
             st = st.withCollapsed(soft = Glob(collapsePackagesSoft), hard = Glob(collapsePackagesHard))
             st.dump(sb, coloredDump, leftPaneSizeChars, timeFormat)
             sb.append("====================================================================\n")
-            val groups = tree.toStackTree(totalTime).calculateGroupTotals(groupTotals)
+            val groups = tree.toCallTree(totalTime).calculateGroupTotals(groupTotals)
             sb.append(groups.prettyPrint(totalTime))
             sb.append("====================================================================\n")
             println(sb)
         }
 
-        return stackTree
+        return callTree
     }
 }
 
@@ -221,7 +221,7 @@ private class StacktraceSamples(val samples: List<Sample>) {
 
     val sampleCount: Int get() = samples.size
 
-    fun toStackTree(totalTime: Duration): StackTree {
+    fun toCallTree(totalTime: Duration): CallTree {
         /**
          * @property element the pointer to the class+method the program called.
          * @property children child nodes - functions that the [element] called.
@@ -230,7 +230,7 @@ private class StacktraceSamples(val samples: List<Sample>) {
          */
         data class SNode(val element: StackTraceElement, var occurrences: Int = 0, var ownTime: Long = 0L,
                          val children: MutableMap<StackTraceElement, SNode> = LinkedHashMap()) {
-            fun toNode(): StackTree.Node = StackTree.Node(element, children.values.map { it.toNode() }, Duration.ofMillis(ownTime), occurrences)
+            fun toNode(): CallTree.Node = CallTree.Node(element, children.values.map { it.toNode() }, Duration.ofMillis(ownTime), occurrences)
         }
 
         val roots = LinkedHashMap<StackTraceElement, SNode>()
@@ -252,7 +252,7 @@ private class StacktraceSamples(val samples: List<Sample>) {
             leafNode.ownTime += sample.durationMs.toLong()
         }
 
-        return StackTree(totalTime, roots.values.map { it.toNode() })
+        return CallTree(totalTime, roots.values.map { it.toNode() })
     }
 }
 
