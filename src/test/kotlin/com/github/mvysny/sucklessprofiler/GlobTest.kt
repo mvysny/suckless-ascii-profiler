@@ -18,4 +18,10 @@ class GlobTest : DynaTest({
         expect(true) { glob.matches(String::class.java) }
         expect(false) { glob.matches(URISyntax::class.java) }
     }
+
+    test("real-world matching") {
+        val glob = Glob(listOf("java.*", "javax.*", "sun.*", "sunw.*", "com.sun.*", "jdk.*", "com.zaxxer.hikari.*", "org.springframework.*"))
+        expect(true) { glob.matches("org.springframework.transaction.interceptor.TransactionAspectSupport")}
+        expect(true) { glob.matches("com.zaxxer.hikari.pool.HikariProxyConnection") }
+    }
 })
