@@ -45,7 +45,7 @@ class SucklessProfiler {
      * The difference between this and [collapsePackagesHard] is that soft-collapsing `java.*` won't collapse `java.lang.Method`
      * since the stack trace continues with your app's logic which is not `java.*`.
      */
-    var collapsePackagesSoft: MutableList<String> = mutableListOf("java.*", "javax.*", "sun.*", "sunw.*", "com.sun.*", "jdk.*")
+    var collapsePackagesSoft: MutableList<String> = mutableListOf("java.*", "javax.*", "sun.*", "sunw.*", "com.sun.*", "jdk.*", "kotlin.*")
 
     /**
      * Don't profile classes from any of the package that matches these globs. Basically, any class matching these globs will
