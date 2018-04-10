@@ -24,11 +24,19 @@ class StackTree(val roots: List<Node>) {
 
         override fun toString() = "Node(element=$element, ownTime=$ownTime, totalTime=$totalTime, occurences=$occurences)"
 
-        fun pruneStacktraceBottom(): Node = when {
-            children.size == 1 -> children.values.first().pruneStacktraceBottom()
+        /**
+         * Prunes a path with no fork from this node down into its children.
+         */
+        fun withStacktraceTopPruned(): Node = when {
+            children.size == 1 -> children.values.first().withStacktraceTopPruned()
             else -> this
         }
     }
+
+    /**
+     * Prunes a path with no fork from this node down into its children.
+     */
+    fun withStacktraceTopPruned() = StackTree(roots.map { it.withStacktraceTopPruned() } )
 
     /**
      * Dumps a pretty tree into the string builder. The tree is optionally [colored].

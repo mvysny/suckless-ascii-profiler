@@ -72,7 +72,7 @@ class SucklessProfiler {
      * Useful for profiling servlets: removes the unnecessary stacktrace all the way from [Thread.run] through http server's
      * parsing code, the filter chain and jumps straight into the servlet code.
      */
-    var pruneStacktraceBottom: Boolean = false
+    var pruneStacktraceTop: Boolean = false
 
     /**
      * Often dumping all web requests will produce a lot of clutter; we often want to not to dump any info for short requests which
@@ -109,6 +109,7 @@ class SucklessProfiler {
      * to watch this thread endlessly and needlessly, wasting both CPU cycles and memory (since the stacktrace samples are
      * stored in-memory).
      * @param dumpProfilingInfo defaults to true. If false, nothing is dumped - collected profiling info is just thrown away.
+     * @return the stack tree, unpruned! @todo mavi also with uncollapsed packages!
      */
     fun stop(dumpProfilingInfo: Boolean = true): StackTree {
         val totalTime = Duration.ofMillis(System.currentTimeMillis() - startedAt)
@@ -116,7 +117,10 @@ class SucklessProfiler {
         samplerFuture.cancel(false)
         val tree = sampler.copy()
         val cutTree = tree.cutStacktraces(collapsePackages)
-        val stackTree = cutTree.toStackTree(pruneStacktraceBottom)
+        var stackTree = cutTree.toStackTree()
+        if (pruneStacktraceTop) {
+            stackTree = stackTree.withStacktraceTopPruned()
+        }
 
         val dump = dumpProfilingInfo && this.dump && totalTime >= dumpOnlyProfilingsLongerThan
         if (dump) {
@@ -128,7 +132,7 @@ class SucklessProfiler {
             sb.append("====================================================================\n")
             stackTree.dump(sb, coloredDump, totalTime, leftPaneSizeChars, timeFormat)
             sb.append("====================================================================\n")
-            val groups = tree.toStackTree(false).calculateGroupTotals(groupTotals)
+            val groups = tree.toStackTree().calculateGroupTotals(groupTotals)
             sb.append(groups.prettyPrint(totalTime))
             sb.append("====================================================================\n")
             println(sb)
@@ -225,7 +229,7 @@ private class StacktraceSamples(val samples: List<Sample>) {
         return StacktraceSamples(cutSamples)
     }
 
-    fun toStackTree(pruneStacktraceBottom: Boolean): StackTree {
+    fun toStackTree(): StackTree {
         val roots = LinkedHashMap<StackTraceElement, StackTree.Node>()
 
         // first, compute the 'roots' tree.
@@ -256,12 +260,7 @@ private class StacktraceSamples(val samples: List<Sample>) {
             node.computeTotalTime()
         }
 
-        var root = roots.values.toList()
-        if (pruneStacktraceBottom) {
-            root = root.map { it.pruneStacktraceBottom() }
-        }
-
-        return StackTree(root)
+        return StackTree(roots.values.toList())
     }
 }
 
