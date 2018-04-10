@@ -209,7 +209,7 @@ private class StacktraceSamples(val samples: List<Sample>) {
     val sampleCount: Int get() = samples.size
 
     fun toStackTree(): StackTree {
-                /**
+        /**
          * @property element the pointer to the class+method the program called.
          * @property children child nodes - functions that the [element] called.
          * @property ownTime how much time was spent executing code in this very function. Equals to this [totalTime] minus total times of all chidren. Milliseconds.
