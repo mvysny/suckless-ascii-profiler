@@ -42,7 +42,7 @@ class SucklessProfiler {
      * Don't profile classes from any of the package that matches these globs. Basically, any class matching these globs will
      * be counted towards the own time of the callee method.
      */
-    var dontProfilePackages: MutableList<String> = listOf("java.*", "javax.*", "sun.*", "sunw.*", "com.sun.*", "jdk.*").toMutableList()
+    var collapsePackages: MutableList<String> = listOf("java.*", "javax.*", "sun.*", "sunw.*", "com.sun.*", "jdk.*").toMutableList()
 
     /**
      * At the end, calculate totals of how much time the program spent in particular libraries.
@@ -115,7 +115,7 @@ class SucklessProfiler {
         started = false
         samplerFuture.cancel(false)
         val tree = sampler.copy()
-        val cutTree = tree.cutStacktraces(dontProfilePackages)
+        val cutTree = tree.cutStacktraces(collapsePackages)
         val stackTree = cutTree.toStackTree(pruneStacktraceBottom)
 
         val dump = dumpProfilingInfo && this.dump && totalTime >= dumpOnlyProfilingsLongerThan
