@@ -94,9 +94,9 @@ class StackTree(val roots: List<Node>) {
      * matches some group and performs a DB or IO, the DB/IO time is not considered.
      * @param groups calculate totals of how much time the program spent in particular libraries. Maps a human-readable group name (e.g. "DB")
      * to a list of package names to match (e.g. `listOf("com.zaxxer.hikari.*", "org.mariadb.jdbc.*")`.
-     * @return totals, keyed by [groups] keys, mapping to millis duration.
+     * @return totals, keyed by [groups] keys, mapping to duration.
      */
-    fun calculateGroupTotals(groups: Map<String, List<String>>): Map<String, Long> {
+    fun calculateGroupTotals(groups: Map<String, List<String>>): Map<String, Duration> {
         val totals: MutableMap<String, Long> = groups.keys.associate { it to 0L } .toMutableMap()
         val globs = groups.mapValues { Glob(it.value) }
         fun walkNodes(nodes: Collection<Node>) {
@@ -104,7 +104,7 @@ class StackTree(val roots: List<Node>) {
                 val matchingGroupName: String? = globs.entries.firstOrNull { it.value.matches(node.element) } ?.key
                 if (matchingGroupName != null) {
                     // match! Append the node time towards the total for given group/key.
-                    totals.compute(matchingGroupName, { k, v -> (v ?: 0L) + node.totalTime })
+                    totals.compute(matchingGroupName, { _, v -> (v ?: 0L) + node.totalTime })
                 } else {
                     // no match, search its children.
                     walkNodes(node.children.values)
@@ -112,6 +112,18 @@ class StackTree(val roots: List<Node>) {
             }
         }
         walkNodes(roots)
-        return totals
+        return totals.mapValues { (_, v) -> Duration.ofMillis(v) }
     }
+}
+
+/**
+ * Pretty-prints all non-zero groups, e.g. `Total: 100ms [DB: 25ms (25%), IO/Net: 10ms (10%)]`.
+ * @param totalTime the overall duration of the profiled code.
+ */
+fun Map<String, Duration>.prettyPrint(totalTime: Duration): String {
+    val groupsDuration = entries.filter { it.value != Duration.ZERO }
+    val groupDump = groupsDuration.map { (group, duration) ->
+        "$group: ${TimeFormatEnum.Millis.format(duration, totalTime)} (${TimeFormatEnum.Percentage.format(duration, totalTime)})"
+    }
+    return "Total: ${totalTime.toMillis()}ms [${groupDump.joinToString(", ")}]\n"
 }
