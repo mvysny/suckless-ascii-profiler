@@ -204,57 +204,42 @@ private class StacktraceSamples(val samples: List<Sample>) {
      * @property stacktrace the stacktrace. Note that it is reversed: 0th item is the most nested method call; last item is probably something like `Thread.run()`.
      * @property durationMs the actual delay between previous sample and this one.
      */
-    class Sample(val stacktrace: Array<StackTraceElement>, val durationMs: Int) {
-        /**
-         * Cuts the stacktrace so that all nested calls matching [classNameRegex] are removed.
-         * @param glob e.g. java.*|javax.*; basically collapses all calls to these uninteresting methods.
-         */
-        fun cut(glob: Glob): Sample {
-            // we'll cut the stacktrace so that it only contains stacktraces from root (last item in the array) to the last collapsible call.
-            // note that the stacktrace is reversed, so we scan from the first item (most nested trace)
-            var firstNonMatching = stacktrace.indexOfFirst { element -> !glob.matches(element) }
-            if (firstNonMatching < 0) return Sample(arrayOf(), durationMs)
-            if (firstNonMatching > 0) {
-                firstNonMatching-- // include the function itself, so it is clear which java. or javax. function it was.
-            }
-            return Sample(stacktrace.sliceArray(firstNonMatching until stacktrace.size), durationMs)
-        }
-    }
+    class Sample(val stacktrace: Array<StackTraceElement>, val durationMs: Int)
 
     val sampleCount: Int get() = samples.size
 
     fun toStackTree(): StackTree {
-        val roots = LinkedHashMap<StackTraceElement, StackTree.Node>()
+                /**
+         * @property element the pointer to the class+method the program called.
+         * @property children child nodes - functions that the [element] called.
+         * @property ownTime how much time was spent executing code in this very function. Equals to this [totalTime] minus total times of all chidren. Milliseconds.
+         * @property occurrences in how many stack trace samples this node is present.
+         */
+        data class SNode(val element: StackTraceElement, var occurrences: Int = 0, var ownTime: Long = 0L,
+                         val children: MutableMap<StackTraceElement, SNode> = LinkedHashMap()) {
+            fun toNode(): StackTree.Node = StackTree.Node(element, children.values.map { it.toNode() }, Duration.ofMillis(ownTime), occurrences)
+        }
 
-        // first, compute the 'roots' tree.
+        val roots = LinkedHashMap<StackTraceElement, SNode>()
+
         for (sample in samples) {
-            var parentNode: StackTree.Node? = null
+            var parentNode: SNode? = null
             for (element in sample.stacktrace.reversedArray()) {
-                val node: StackTree.Node
+                val node: SNode
                 if (parentNode == null) {
-                    node = roots.getOrPut(element) { StackTree.Node(element) }
+                    node = roots.getOrPut(element) { SNode(element) }
                     roots[element] = node
                 } else {
-                    node = parentNode.children.getOrPut(element) { StackTree.Node(element) }
+                    node = parentNode.children.getOrPut(element) { SNode(element) }
                 }
-                node.occurences++
+                node.occurrences++
                 parentNode = node
             }
             val leafNode = parentNode!!
             leafNode.ownTime += sample.durationMs.toLong()
         }
 
-        // second pass - recompute total durations
-        fun StackTree.Node.computeTotalTime(): Long {
-            kotlin.check(totalTime == 0L) { "Expected 0 but got $totalTime: ${this@computeTotalTime}" }
-            totalTime = ownTime + children.values.map { it.computeTotalTime() }.sum()
-            return totalTime
-        }
-        for (node in roots.values) {
-            node.computeTotalTime()
-        }
-
-        return StackTree(roots.values.toList())
+        return StackTree(roots.values.map { it.toNode() })
     }
 }
 

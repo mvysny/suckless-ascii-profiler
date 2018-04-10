@@ -1,7 +1,6 @@
 package com.github.mvysny.sucklessprofiler
 
 import java.time.Duration
-import java.util.LinkedHashMap
 
 /**
  * Represents a stack tree - a call history. Every node contains a pointer to a class+method, time spent etc.
@@ -13,55 +12,30 @@ class StackTree(val roots: List<Node>) {
      * @property element the pointer to the class+method the program called.
      * @property children child nodes - functions that the [element] called.
      * @property ownTime how much time was spent executing code in this very function. Equals to this [totalTime] minus total times of all chidren. Milliseconds.
-     * @property totalTime the total time spent in this function including all children, in milliseconds.
-     * @property occurences in how many stack trace samples this node is present.
+     * @property occurrences in how many stack trace samples this node is present.
      */
-    class Node(val element: StackTraceElement) {
-        val children = LinkedHashMap<StackTraceElement, Node>()
-        var ownTime: Long = 0
-        var totalTime: Long = 0
-        var occurences: Int = 0
+    data class Node(val element: StackTraceElement, val children: List<Node>, val ownTime: Duration, val occurrences: Int) {
 
-        override fun toString() = "Node(element=$element, ownTime=$ownTime, totalTime=$totalTime, occurences=$occurences)"
+        /**
+         * The total time spent in this function including all children, in milliseconds.
+         */
+        val totalTime: Duration by lazy { Duration.ofMillis(ownTime.toMillis() + children.map { it.totalTime.toMillis() }.sum()) }
+
+        override fun toString() = "Node($element, $ownTime/$totalTime, occurrences=$occurrences)"
 
         /**
          * Prunes a path with no fork from this node down into its children.
          */
         fun withStacktraceTopPruned(): Node = when {
-            children.size == 1 -> children.values.first().withStacktraceTopPruned()
+            children.size == 1 -> children.first().withStacktraceTopPruned()
             else -> this
         }
 
         /**
          * Creates a new node which is collapsed - it has no children and [ownTime] equal to [totalTime]
          */
-        fun collapsed() = clone(deep = false).apply { collapse() }
-
-        /**
-         * Collapses this node: removes all children and makes [ownTime] equal to [totalTime].
-         */
-        fun collapse() {
-            children.clear()
-            ownTime = totalTime
-        }
-
-        /**
-         * Clones this node.
-         * @param deep if true (default), also children are cloned recursively.
-         */
-        fun clone(deep: Boolean = true): Node = Node(element).also {
-            it.ownTime = ownTime
-            it.totalTime = totalTime
-            it.occurences = occurences
-            if (deep) {
-                it.children.putAll(children.mapValues { (_, v) -> v.clone(true) })
-            } else {
-                it.children.putAll(children)
-            }
-        }
+        fun collapsed() = copy(children = listOf(), ownTime = totalTime)
     }
-
-    fun clone(): StackTree = StackTree(roots.map { it.clone() })
 
     /**
      * Prunes a path with no fork from this node down into its children.
@@ -72,20 +46,12 @@ class StackTree(val roots: List<Node>) {
      * Returns a new stack tree with nodes matching given [glob] collapsed.
      */
     fun withCollapsed(glob: Glob): StackTree {
-        val result = clone()
-        fun collapseIfMatches(node: Node) {
-            if (glob.matches(node.element)) {
-                node.collapse()
-            } else {
-                for (child in node.children.values) {
-                    collapseIfMatches(child)
-                }
-            }
+        fun collapseIfMatches(node: Node): Node = if (glob.matches(node.element)) {
+            node.collapsed()
+        } else {
+            node.copy(children = node.children.map { collapseIfMatches(it) })
         }
-        for (root in result.roots) {
-            collapseIfMatches(root)
-        }
-        return result
+        return StackTree(roots.map { collapseIfMatches(it) })
     }
 
     /**
@@ -121,14 +87,14 @@ class StackTree(val roots: List<Node>) {
                 }
                 append("total ")
                 appendColor("\u001B[33m")
-                if (node.occurences <= 1) append('>')
-                append(timeFormat.format(Duration.ofMillis(node.totalTime), totalTime))
+                if (node.occurrences <= 1) append('>')
+                append(timeFormat.format(node.totalTime, totalTime))
                 appendColor("\u001B[0m")
-                if (node.children.isEmpty() || node.ownTime > 0) {
+                if (node.children.isEmpty() || node.ownTime > Duration.ZERO) {
                     append(" / own ")
                     appendColor("\u001B[32m")
-                    if (node.occurences <= 1) append('>')
-                    append(timeFormat.format(Duration.ofMillis(node.ownTime), totalTime))
+                    if (node.occurrences <= 1) append('>')
+                    append(timeFormat.format(node.ownTime, totalTime))
                     appendColor("\u001B[0m")
                 }
                 // right pane: stacktrace element so that the programmer can ctrl+click
@@ -137,7 +103,7 @@ class StackTree(val roots: List<Node>) {
                 append(" at ")
                 append(node.element)
             }
-            return PrettyPrintTree(text, node.children.values.map { toTreeNode(it, padding + 2) })
+            return PrettyPrintTree(text, node.children.map { toTreeNode(it, padding + 2) })
         }
 
         for (root in roots) {
@@ -162,10 +128,10 @@ class StackTree(val roots: List<Node>) {
                 val matchingGroupName: String? = globs.entries.firstOrNull { it.value.matches(node.element) } ?.key
                 if (matchingGroupName != null) {
                     // match! Append the node time towards the total for given group/key.
-                    totals.compute(matchingGroupName, { _, v -> (v ?: 0L) + node.totalTime })
+                    totals.compute(matchingGroupName, { _, v -> (v ?: 0L) + node.totalTime.toMillis() })
                 } else {
                     // no match, search its children.
-                    walkNodes(node.children.values)
+                    walkNodes(node.children)
                 }
             }
         }
