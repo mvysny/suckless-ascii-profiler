@@ -7,14 +7,24 @@ import java.util.*
 import java.util.concurrent.*
 
 enum class TimeFormatEnum {
+    /**
+     * Formats the duration as percentage of total time, using one decimal point. Example: `25.4%`.
+     */
     Percentage {
-        override fun format(stackDuration: Duration, totalDuration: Duration) =
-            DecimalFormat("#.#%").format(stackDuration.toMillis().toFloat() / totalDuration.toMillis())
+        override fun format(duration: Duration, totalDuration: Duration) =
+            DecimalFormat("#.#%").format(duration.toMillis().toFloat() / totalDuration.toMillis())
     },
+    /**
+     * Formats the duration as milliseconds, for example `250ms`.
+     */
     Millis {
-        override fun format(stackDuration: Duration, totalDuration: Duration) = "${stackDuration.toMillis()}ms"
+        override fun format(duration: Duration, totalDuration: Duration) = "${duration.toMillis()}ms"
     };
-    abstract fun format(stackDuration: Duration, totalDuration: Duration): String
+
+    /**
+     * Formats and returns the [duration], optionally as a part of [totalDuration].
+     */
+    abstract fun format(duration: Duration, totalDuration: Duration): String
 }
 
 /**
@@ -95,6 +105,10 @@ class SucklessProfiler {
      */
     var dumpOnlyProfilingsLongerThan: Duration = Duration.ZERO
 
+    /**
+     * How to format the call duration for every frame, either as millis (`250ms`) or percentage (`10.4%`). Defaults
+     * to percentage.
+     */
     var timeFormat: TimeFormatEnum = TimeFormatEnum.Percentage
 
     /**

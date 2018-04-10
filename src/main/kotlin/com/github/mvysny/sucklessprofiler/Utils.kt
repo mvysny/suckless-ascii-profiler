@@ -1,5 +1,7 @@
 package com.github.mvysny.sucklessprofiler
 
+import java.time.Duration
+
 /**
  * A glob matching class names. Examples:
  * * `java.*` will match `java.lang.String` and `java.io.BufferedReader` but not `javax.net.SocketFactory`
@@ -46,4 +48,19 @@ class PrettyPrintTree(val name: String, val children: List<PrettyPrintTree>) {
         }
         children.lastOrNull()?.print(sb, prefix + if (isTail) "  " else "| ", true)
     }
+}
+
+fun Long.toDuration() = Duration.ofMillis(this)
+
+fun Iterable<Duration>.sum(): Duration = sumByLong { it.toMillis() } .toDuration()
+
+/**
+ * Returns the sum of all values produced by [selector] function applied to each element in the collection.
+ */
+inline fun <T> Iterable<T>.sumByLong(selector: (T) -> Long): Long {
+    var sum: Long = 0
+    for (element in this) {
+        sum += selector(element)
+    }
+    return sum
 }

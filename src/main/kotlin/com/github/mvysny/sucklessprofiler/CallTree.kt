@@ -3,7 +3,7 @@ package com.github.mvysny.sucklessprofiler
 import java.time.Duration
 
 /**
- * Represents a call tree - a call history. Every node contains a pointer to a class+method, time spent etc.
+ * Represents a call tree - a call history. Every node contains a pointer to a class+method, time spent etc. Immutable.
  */
 class CallTree(val totalTime: Duration, val roots: List<Node>) {
     init {
@@ -12,6 +12,7 @@ class CallTree(val totalTime: Duration, val roots: List<Node>) {
 
     /**
      * A node in the stack tree. Contains a pointer to the class+method where the program spent time, the time that was spent etc.
+     * Immutable.
      * @property element the pointer to the class+method the program called.
      * @property children child nodes - functions that the [element] called.
      * @property ownTime how much time was spent executing code in this very function. Equals to this [totalTime] minus total times of all chidren. Milliseconds.
@@ -22,9 +23,11 @@ class CallTree(val totalTime: Duration, val roots: List<Node>) {
         /**
          * The total time spent in this function including all children, in milliseconds.
          */
-        val totalTime: Duration by lazy { Duration.ofMillis(ownTime.toMillis() + children.map { it.totalTime.toMillis() }.sum()) }
+        val totalTime: Duration by lazy { ownTime + children.map { it.totalTime }.sum() }
 
         override fun toString() = "Node($element, $ownTime/$totalTime, occurrences=$occurrences)"
+        override fun equals(other: Any?): Boolean = other is Node && element == other.element
+        override fun hashCode(): Int = element.hashCode()
 
         /**
          * Prunes a path with no fork from this node down into its children.
@@ -122,7 +125,7 @@ class CallTree(val totalTime: Duration, val roots: List<Node>) {
     }
 
     /**
-     * Calculates summary durations of various libraries.
+     * Calculates summary durations of various libraries, represented as package matcher [Glob]s.
      *
      * Note: if a package is matched for one group, the algorithm does not dig deeper into child stack traces! Therefore, if your class
      * matches some group and performs a DB or IO, the DB/IO time is not considered.
