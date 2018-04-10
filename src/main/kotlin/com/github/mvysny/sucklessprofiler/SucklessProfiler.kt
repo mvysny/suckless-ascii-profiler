@@ -109,18 +109,14 @@ class SucklessProfiler {
      * to watch this thread endlessly and needlessly, wasting both CPU cycles and memory (since the stacktrace samples are
      * stored in-memory).
      * @param dumpProfilingInfo defaults to true. If false, nothing is dumped - collected profiling info is just thrown away.
-     * @return the stack tree, unpruned! @todo mavi also with uncollapsed packages!
+     * @return the stack tree, unpruned and uncollapsed
      */
     fun stop(dumpProfilingInfo: Boolean = true): StackTree {
         val totalTime = Duration.ofMillis(System.currentTimeMillis() - startedAt)
         started = false
         samplerFuture.cancel(false)
-        val tree = sampler.copy()
-        val cutTree = tree.cutStacktraces(collapsePackages)
-        var stackTree = cutTree.toStackTree()
-        if (pruneStacktraceTop) {
-            stackTree = stackTree.withStacktraceTopPruned()
-        }
+        val tree: StacktraceSamples = sampler.copy()
+        val stackTree: StackTree = tree.toStackTree()
 
         val dump = dumpProfilingInfo && this.dump && totalTime >= dumpOnlyProfilingsLongerThan
         if (dump) {
@@ -130,7 +126,12 @@ class SucklessProfiler {
             sb.append("====================================================================\n")
             sb.append("Result of profiling of $sampler: ${totalTime.toMillis()}ms, ${tree.sampleCount} samples\n")
             sb.append("====================================================================\n")
-            stackTree.dump(sb, coloredDump, totalTime, leftPaneSizeChars, timeFormat)
+            var st = stackTree
+            if (pruneStacktraceTop) {
+                st = st.withStacktraceTopPruned()
+            }
+            st = st.withCollapsed(Glob(collapsePackages))
+            st.dump(sb, coloredDump, totalTime, leftPaneSizeChars, timeFormat)
             sb.append("====================================================================\n")
             val groups = tree.toStackTree().calculateGroupTotals(groupTotals)
             sb.append(groups.prettyPrint(totalTime))
@@ -221,13 +222,6 @@ private class StacktraceSamples(val samples: List<Sample>) {
     }
 
     val sampleCount: Int get() = samples.size
-
-    fun cutStacktraces(cutpoints: List<String>): StacktraceSamples {
-        if (cutpoints.isEmpty()) return this
-        val regex = Glob(cutpoints)
-        val cutSamples = samples.map { it.cut(regex) }.filterNot { it.stacktrace.isEmpty() }
-        return StacktraceSamples(cutSamples)
-    }
 
     fun toStackTree(): StackTree {
         val roots = LinkedHashMap<StackTraceElement, StackTree.Node>()

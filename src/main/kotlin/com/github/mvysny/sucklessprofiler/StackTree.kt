@@ -31,12 +31,62 @@ class StackTree(val roots: List<Node>) {
             children.size == 1 -> children.values.first().withStacktraceTopPruned()
             else -> this
         }
+
+        /**
+         * Creates a new node which is collapsed - it has no children and [ownTime] equal to [totalTime]
+         */
+        fun collapsed() = clone(deep = false).apply { collapse() }
+
+        /**
+         * Collapses this node: removes all children and makes [ownTime] equal to [totalTime].
+         */
+        fun collapse() {
+            children.clear()
+            ownTime = totalTime
+        }
+
+        /**
+         * Clones this node.
+         * @param deep if true (default), also children are cloned recursively.
+         */
+        fun clone(deep: Boolean = true): Node = Node(element).also {
+            it.ownTime = ownTime
+            it.totalTime = totalTime
+            it.occurences = occurences
+            if (deep) {
+                it.children.putAll(children.mapValues { (_, v) -> v.clone(true) })
+            } else {
+                it.children.putAll(children)
+            }
+        }
     }
+
+    fun clone(): StackTree = StackTree(roots.map { it.clone() })
 
     /**
      * Prunes a path with no fork from this node down into its children.
      */
     fun withStacktraceTopPruned() = StackTree(roots.map { it.withStacktraceTopPruned() } )
+
+    /**
+     * Returns a new stack tree with nodes matching given [glob] collapsed.
+     */
+    fun withCollapsed(glob: Glob): StackTree {
+        val result = clone()
+        fun collapseIfMatches(node: Node) {
+            if (glob.matches(node.element)) {
+                node.collapse()
+            } else {
+                for (child in node.children.values) {
+                    collapseIfMatches(child)
+                }
+            }
+        }
+        for (root in result.roots) {
+            collapseIfMatches(root)
+        }
+        return result
+    }
 
     /**
      * Dumps a pretty tree into the string builder. The tree is optionally [colored].
