@@ -44,6 +44,8 @@ class SucklessProfiler {
      *
      * The difference between this and [collapsePackagesHard] is that soft-collapsing `java.*` won't collapse `java.lang.Method`
      * since the stack trace continues with your app's logic which is not `java.*`.
+     *
+     * All [collapsePackagesHard] packages are automatically included in this list.
      */
     var collapsePackagesSoft: MutableList<String> = mutableListOf("java.*", "javax.*", "sun.*", "sunw.*", "com.sun.*", "jdk.*", "kotlin.*")
 
@@ -143,7 +145,7 @@ class SucklessProfiler {
             if (pruneStacktraceTop) {
                 st = st.withStacktraceTopPruned()
             }
-            st = st.withCollapsed(soft = Glob(collapsePackagesSoft), hard = Glob(collapsePackagesHard))
+            st = st.withCollapsed(soft = Glob(collapsePackagesSoft + collapsePackagesHard), hard = Glob(collapsePackagesHard))
             st.dump(sb, coloredDump, leftPaneSizeChars, timeFormat)
             sb.append("====================================================================\n")
             val groups = tree.toCallTree(totalTime).calculateGroupTotals(groupTotals)
