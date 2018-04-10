@@ -3,12 +3,9 @@ package com.github.mvysny.sucklessprofiler
 /**
  * A glob matching class names. Examples:
  * * `java.*` will match `java.lang.String` and `java.io.BufferedReader` but not `javax.net.SocketFactory`
- * @property globs a list of globs; any item from the list matches. Must not be empty.
+ * @property globs a list of globs; any item from the list matches. If empty, the glob will match nothing.
  */
 class Glob(val globs: List<String>) {
-    init {
-        require(globs.isNotEmpty()) { "globs is empty" }
-    }
     private val regex = globs.map { it.replace(".", "\\.").replace("*", ".*") }.joinToString("|").toRegex()
     override fun toString() = "Glob($globs)"
     /**
@@ -26,6 +23,9 @@ class Glob(val globs: List<String>) {
      * Beware - superclasses are not matched!
      */
     fun matches(element: StackTraceElement) = matches(element.className)
+    companion object {
+        val MATCH_NOTHING = Glob(listOf())
+    }
 }
 
 fun String.toGlob(): Glob = Glob(listOf(this))

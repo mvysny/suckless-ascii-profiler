@@ -130,7 +130,7 @@ class SucklessProfiler {
             if (pruneStacktraceTop) {
                 st = st.withStacktraceTopPruned()
             }
-            st = st.withCollapsed(Glob(collapsePackages))
+            st = st.withCollapsed(soft = Glob(collapsePackages))
             st.dump(sb, coloredDump, leftPaneSizeChars, timeFormat)
             sb.append("====================================================================\n")
             val groups = tree.toStackTree(totalTime).calculateGroupTotals(groupTotals)

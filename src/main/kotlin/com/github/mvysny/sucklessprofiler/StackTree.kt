@@ -38,6 +38,11 @@ class StackTree(val totalTime: Duration, val roots: List<Node>) {
          * Creates a new node which is collapsed - it has no children and [ownTime] equal to [totalTime]
          */
         fun collapsed() = copy(children = listOf(), ownTime = totalTime)
+
+        /**
+         * Checks whether this node and the whole tree matches given [glob].
+         */
+        fun treeMatches(glob: Glob): Boolean = glob.matches(element) && children.all { it.treeMatches(glob) }
     }
 
     /**
@@ -46,10 +51,12 @@ class StackTree(val totalTime: Duration, val roots: List<Node>) {
     fun withStacktraceTopPruned() = StackTree(totalTime, roots.map { it.withStacktraceTopPruned() } )
 
     /**
-     * Returns a new stack tree with nodes matching given [glob] collapsed.
+     * Returns a new stack tree with nodes matching given pair of globs collapsed.
+     * @param soft the 'soft' collapser - the node including the subtree must match in order to be collapsed.
+     * @param hard the 'hard' collapser - it is enough that this node matches this glob.
      */
-    fun withCollapsed(glob: Glob): StackTree {
-        fun collapseIfMatches(node: Node): Node = if (glob.matches(node.element)) {
+    fun withCollapsed(soft: Glob = Glob.MATCH_NOTHING, hard: Glob = Glob.MATCH_NOTHING): StackTree {
+        fun collapseIfMatches(node: Node): Node = if (hard.matches(node.element) || node.treeMatches(soft)) {
             node.collapsed()
         } else {
             node.copy(children = node.children.map { collapseIfMatches(it) })
