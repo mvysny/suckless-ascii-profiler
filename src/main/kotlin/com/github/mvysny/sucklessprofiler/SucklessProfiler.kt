@@ -39,10 +39,23 @@ class SucklessProfiler {
     var coloredDump: Boolean = false
 
     /**
-     * Don't profile classes from any of the package that matches these globs. Basically, any class matching these globs will
-     * be counted towards the own time of the callee method.
+     * If the call ends in one of these classes, just collapse the call node (all sub-calls will simply be counted towards the own time of this method).
+     * Useful for `java.*` since we typically don't want to profile Java built-in classes.
+     *
+     * The difference between this and [collapsePackagesHard] is that soft-collapsing `java.*` won't collapse `java.lang.Method`
+     * since the stack trace continues with your app's logic which is not `java.*`.
      */
-    var collapsePackages: MutableList<String> = listOf("java.*", "javax.*", "sun.*", "sunw.*", "com.sun.*", "jdk.*").toMutableList()
+    var collapsePackagesSoft: MutableList<String> = mutableListOf("java.*", "javax.*", "sun.*", "sunw.*", "com.sun.*", "jdk.*")
+
+    /**
+     * Don't profile classes from any of the package that matches these globs. Basically, any class matching these globs will
+     * be counted towards the own time of the callee method. For example: `com.zaxxer.hikari.*` hard-truncates the HikariCP and the JDBC
+     * driver stacktrace which we typically don't want to profile and it would just pollute the profiled call tree.
+     *
+     * Use with care. This glob hard-collapses any matching node which may be unwanted. For example `java.*` would collapse `java.lang.Method`
+     * even though it's a reflective call to your app's logic which you want to profile.
+     */
+    var collapsePackagesHard: MutableList<String> = mutableListOf()
 
     /**
      * At the end, calculate totals of how much time the program spent in particular libraries.
@@ -130,7 +143,7 @@ class SucklessProfiler {
             if (pruneStacktraceTop) {
                 st = st.withStacktraceTopPruned()
             }
-            st = st.withCollapsed(soft = Glob(collapsePackages))
+            st = st.withCollapsed(soft = Glob(collapsePackagesSoft), hard = Glob(collapsePackagesHard))
             st.dump(sb, coloredDump, leftPaneSizeChars, timeFormat)
             sb.append("====================================================================\n")
             val groups = tree.toStackTree(totalTime).calculateGroupTotals(groupTotals)
