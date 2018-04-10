@@ -50,9 +50,7 @@ class PrettyPrintTree(val name: String, val children: List<PrettyPrintTree>) {
     }
 }
 
-fun Long.toDuration(): Duration = Duration.ofMillis(this)
-
-fun Iterable<Duration>.sum(): Duration = sumByLong { it.toMillis() } .toDuration()
+fun Iterable<Duration>.sum(): Duration = Duration.ofMillis(sumByLong { it.toMillis() })
 
 /**
  * Returns the sum of all values produced by [selector] function applied to each element in the collection.
