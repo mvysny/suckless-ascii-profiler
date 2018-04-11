@@ -33,11 +33,12 @@ class CallTreeTest : DynaTest({
                 "java.lang.Thread"()
             }
         }
-        expect("""\-Main.invoke(): total >4% / own >1%       at com.test.Main.invoke(Unknown Source)
-  +-Thread.invoke(): total >1% / own >1%   at java.lang.Thread.invoke(Unknown Source)
-  +-TextStreamsKt.invoke(): total >1% / own >1% at kotlin.io.TextStreamsKt.invoke(Unknown Source)
-  \-Thread.invoke(): total >1% / own >1%   at java.lang.Thread.invoke(Unknown Source)
-""") { callTree.prettyPrint() }
+        expect("""
+            \-Main.invoke(): total >4% / own >1%       at com.test.Main.invoke(Unknown Source)
+              +-Thread.invoke(): total >1% / own >1%   at java.lang.Thread.invoke(Unknown Source)
+              +-TextStreamsKt.invoke(): total >1% / own >1% at kotlin.io.TextStreamsKt.invoke(Unknown Source)
+              \-Thread.invoke(): total >1% / own >1%   at java.lang.Thread.invoke(Unknown Source)
+            """.trimIndent()) { callTree.prettyPrint().trim() }
     }
 
     test("prune") {
@@ -48,8 +49,7 @@ class CallTreeTest : DynaTest({
                 }
             }
         }
-        expect("""\-Fun2.invoke(): total >1% / own >1%       at com.test.Fun2.invoke(Unknown Source)
-""") { callTree.withStacktraceTopPruned().prettyPrint() }
+        expect("""\-Fun2.invoke(): total >1% / own >1%       at com.test.Fun2.invoke(Unknown Source)""") { callTree.withStacktraceTopPruned().prettyPrint().trim() }
     }
 
     group("collapse") {
@@ -61,9 +61,10 @@ class CallTreeTest : DynaTest({
                     }
                 }
             }
-            expect("""\-Main.invoke(): total >3% / own >1%       at com.test.Main.invoke(Unknown Source)
-  \-String.invoke(): total >2% / own >2%   at java.lang.String.invoke(Unknown Source)
-""") { callTree.withCollapsed(soft = "java.lang.*".toGlob()).prettyPrint() }
+            expect("""
+                \-Main.invoke(): total >3% / own >1%       at com.test.Main.invoke(Unknown Source)
+                  \-String.invoke(): total >2% / own >2%   at java.lang.String.invoke(Unknown Source)
+                """.trimIndent()) { callTree.withCollapsed(soft = "java.lang.*".toGlob()).prettyPrint().trim() }
         }
 
         test("soft collapse does not collapse unmatched calls") {
@@ -74,13 +75,14 @@ class CallTreeTest : DynaTest({
                     }
                 }
             }
-            expect("""\-Main.invoke(): total >3% / own >1%       at com.test.Main.invoke(Unknown Source)
-  \-Method.invoke(): total >2% / own >1%   at java.lang.Method.invoke(Unknown Source)
-    \-ReflectiveCall.invoke(): total >1% / own >1% at com.test.ReflectiveCall.invoke(Unknown Source)
-""") { callTree.withCollapsed(soft = "java.lang.*".toGlob()).prettyPrint() }
+            expect("""
+                \-Main.invoke(): total >3% / own >1%       at com.test.Main.invoke(Unknown Source)
+                  \-Method.invoke(): total >2% / own >1%   at java.lang.Method.invoke(Unknown Source)
+                    \-ReflectiveCall.invoke(): total >1% / own >1% at com.test.ReflectiveCall.invoke(Unknown Source)
+                """.trimIndent()) { callTree.withCollapsed(soft = "java.lang.*".toGlob()).prettyPrint().trim() }
         }
 
-        test("collapse hard") {
+        test("simple hard collapse") {
             val callTree = tree {
                 "com.test.Main" {
                     "java.lang.String" {
@@ -88,9 +90,10 @@ class CallTreeTest : DynaTest({
                     }
                 }
             }
-            expect("""\-Main.invoke(): total >3% / own >1%       at com.test.Main.invoke(Unknown Source)
-  \-String.invoke(): total >2% / own >2%   at java.lang.String.invoke(Unknown Source)
-""") { callTree.withCollapsed(hard = "java.lang.*".toGlob()).prettyPrint() }
+            expect("""
+                \-Main.invoke(): total >3% / own >1%       at com.test.Main.invoke(Unknown Source)
+                  \-String.invoke(): total >2% / own >2%   at java.lang.String.invoke(Unknown Source)
+                """.trimIndent()) { callTree.withCollapsed(hard = "java.lang.*".toGlob()).prettyPrint().trim() }
         }
 
         test("hard collapse collapses unmatched calls") {
@@ -101,9 +104,10 @@ class CallTreeTest : DynaTest({
                     }
                 }
             }
-            expect("""\-Main.invoke(): total >3% / own >1%       at com.test.Main.invoke(Unknown Source)
-  \-Method.invoke(): total >2% / own >2%   at java.lang.Method.invoke(Unknown Source)
-""") { callTree.withCollapsed(hard = "java.lang.*".toGlob()).prettyPrint() }
+            expect("""
+                \-Main.invoke(): total >3% / own >1%       at com.test.Main.invoke(Unknown Source)
+                  \-Method.invoke(): total >2% / own >2%   at java.lang.Method.invoke(Unknown Source)
+                """.trimIndent()) { callTree.withCollapsed(hard = "java.lang.*".toGlob()).prettyPrint().trim() }
         }
     }
 })
