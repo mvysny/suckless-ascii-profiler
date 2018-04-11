@@ -118,6 +118,21 @@ class CallTreeTest : DynaTest({
                     }
                 }
             }
+            expect("""
+                \-Class.invoke(): total >3% / own >1%      at java.lang.Class.invoke(Unknown Source)
+                  \-Class.invoke(): total >2% / own >1%    at java.lang.Class.invoke(Unknown Source)
+                    \-WebAppClassLoader.invoke(): total >1% / own >1% at org.eclipse.jetty.webapp.WebAppClassLoader.invoke(Unknown Source)
+                """.trimIndent()) { callTree.withCollapsed(soft = Glob(listOf("java.lang.*")), hard = Glob(listOf("org.*"))).prettyPrint().trim() }
+        }
+
+        test("soft+hard collapse 2") {
+            val callTree = tree {
+                "java.lang.Class" {
+                    "java.lang.Class" {
+                        "org.eclipse.jetty.webapp.WebAppClassLoader"()
+                    }
+                }
+            }
             expect("""\-Class.invoke(): total >3% / own >3%      at java.lang.Class.invoke(Unknown Source)""") {
                 callTree.withCollapsed(soft = Glob(listOf("java.lang.*", "org.*")), hard = Glob(listOf("org.*"))).prettyPrint().trim()
             }
