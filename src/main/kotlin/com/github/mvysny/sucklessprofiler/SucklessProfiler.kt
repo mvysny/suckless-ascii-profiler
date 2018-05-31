@@ -126,16 +126,17 @@ class SucklessProfiler {
      */
     inline fun profile(block: () -> Unit): CallTree {
         start()
-        try {
+        return try {
             block()
+            stop()
         } finally {
-            return stop()
+            stop(dumpProfilingInfo = false)
         }
     }
 
     /**
-     * Stops the profiler and by default dumps the data obtained. This method *must* be called to stop the profiling thread
-     * to watch this thread endlessly and needlessly, wasting both CPU cycles and memory (since the stacktrace samples are
+     * Stops the profiler and by default dumps the data obtained. This method *must* be called to stop the profiling thread,
+     * otherwise it will continue to watch this thread endlessly and needlessly, wasting both CPU cycles and memory (since the stacktrace samples are
      * stored in-memory).
      * @param dumpProfilingInfo defaults to true. If false, nothing is dumped - collected profiling info is just thrown away.
      * @return the stack tree, unpruned and uncollapsed
