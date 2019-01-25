@@ -1,7 +1,6 @@
 import com.jfrog.bintray.gradle.BintrayExtension
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.jetbrains.dokka.gradle.DokkaTask
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.util.*
 
 val local = Properties()
@@ -34,7 +33,7 @@ repositories {
 
 dependencies {
     compile(kotlin("stdlib-jdk8"))
-    testCompile("com.github.mvysny.dynatest:dynatest:0.13")
+    testCompile("com.github.mvysny.dynatest:dynatest-engine:0.13")
 }
 
 val sourceJar = task("sourceJar", Jar::class) {
