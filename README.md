@@ -116,11 +116,18 @@ probability that that method was running quite long. Of course there is also the
 the method was called repeatedly, ran shortly and was captured in multiple stack samplings,
 but the probability of this is very low.
 
+In order to obtain the stacktrace, the JVM must reach a safepoint; a thread may run for
+just a bit until it hits the safepoint, and therefore the terminal method
+may not be accurate. See [JVM safepoints](https://medium.com/software-under-the-hood/under-the-hood-java-peak-safepoints-dd45af07d766)
+for more info.
+
 To conclude:
 
 * Ignore methods present in just one sample (they are marked with the less-than sign, such as >1%)
 * Focus on long-running methods, and dissect them until you find a culprit
-* Remember that there is a very low probability that the profiler is lying to you :-)
+* Remember that there is a probability that the profiler is lying to you :-)
+* Use Intellij's [Async Profiler](https://blog.jetbrains.com/idea/2018/09/intellij-idea-2018-3-eap-git-submodules-jvm-profiler-macos-and-linux-and-more/)
+  to obtain accurate profiling data.
 
 ### Overhead
 
@@ -134,3 +141,19 @@ Thus, the profiler will use a bit of CPU and memory. However, as long as your ap
 CPU and is not taking nearly all of your JVM's memory, this overhead will not slow down your app.
 Your app will be slowed down by the JVM being paused while the stack trace is taken, however this
 pause is generally just a couple of nanoseconds and therefore negligible.
+
+# License
+
+Copyright 2019 Martin Vysny
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
