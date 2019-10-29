@@ -44,7 +44,7 @@ And you should see the output similar to the screenshot above.
 
 ## Usage
 
-Add the following repository and dependency to your gradle script:
+Add the following repository and dependency to your Gradle script:
 
 ```groovy
 repositories {
@@ -53,6 +53,24 @@ repositories {
 dependencies {
     compile "com.github.mvysny.sucklessprofiler:suckless-profiler:x.y"
 }
+```
+
+Maven:
+```xml
+    <repositories>
+        <repository>
+            <id>mvysny-github</id>
+            <url>https://dl.bintray.com/mvysny/github/</url>
+        </repository>
+    </repositories>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.github.mvysny.sucklessprofiler</groupId>
+            <artifactId>suckless-profiler</artifactId>
+            <version>0.4</version>
+        </dependency>
+    </dependencies>
 ```
 
 > Note: please see the latest tag name above for the newest version
