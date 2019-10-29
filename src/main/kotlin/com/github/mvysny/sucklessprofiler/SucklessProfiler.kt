@@ -141,6 +141,7 @@ class SucklessProfiler {
      * @param dumpProfilingInfo defaults to true. If false, nothing is dumped - collected profiling info is just thrown away.
      * @return the stack tree, unpruned and uncollapsed
      */
+    @JvmOverloads
     fun stop(dumpProfilingInfo: Boolean = true): CallTree {
         val totalTime = Duration.ofMillis(System.currentTimeMillis() - startedAt)
         started = false
