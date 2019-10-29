@@ -143,6 +143,7 @@ class SucklessProfiler {
      */
     @JvmOverloads
     fun stop(dumpProfilingInfo: Boolean = true): CallTree {
+        check(started) { "Profiler has not been started with start()" }
         val totalTime = Duration.ofMillis(System.currentTimeMillis() - startedAt)
         started = false
         samplerFuture.cancel(false)

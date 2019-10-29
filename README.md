@@ -115,6 +115,26 @@ class MyUIServlet : VaadinServlet() {
 }
 ```
 
+or in your JUnit tests:
+
+```java
+public abstract class AbstractTest {
+    private static SucklessProfiler profiler;
+
+    @BeforeClass
+    public static void startupServer() {
+        profiler = new SucklessProfiler();
+        profiler.setColoredDump(true);
+        profiler.setPruneStacktraceTop(true);
+    }
+
+    @AfterClass
+    public static void dumpProfiler() {
+        profiler.stop(true);
+    }
+}
+```
+
 #### About Stacktrace Sampling
 
 A thread stacktrace is captured every 20ms (configurable) into a list of stacktrace samples. That list
