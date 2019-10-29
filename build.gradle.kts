@@ -10,7 +10,7 @@ if (localProperties.exists()) {
 }
 
 plugins {
-    kotlin("jvm") version "1.3.20"
+    kotlin("jvm") version "1.3.50"
     id("com.jfrog.bintray") version "1.8.3"
     `maven-publish`
     id("org.jetbrains.dokka") version "0.9.17"
@@ -33,7 +33,7 @@ repositories {
 
 dependencies {
     compile(kotlin("stdlib-jdk8"))
-    testCompile("com.github.mvysny.dynatest:dynatest-engine:0.13")
+    testCompile("com.github.mvysny.dynatest:dynatest-engine:0.15")
 }
 
 val sourceJar = task("sourceJar", Jar::class) {
