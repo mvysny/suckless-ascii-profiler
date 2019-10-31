@@ -157,6 +157,10 @@ You can define your own groups, simply by adding stuff into the `profiler.groupT
 profiler.groupTotals["Password Hashing"] = listOf("my.project.BCryptPasswordEncoder")
 ```
 
+### Overlapping Groups
+
+A slice of time is always counted towards one group at most.
+
 When the groups overlap (they match the same class + method), first one in the order of
 `profiler.groupTotals` keys wins (`profiler.groupTotals` is a `LinkedHashMap` therefore the keys are ordered).
 
