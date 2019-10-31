@@ -20,7 +20,7 @@ plugins {
 defaultTasks("clean", "build")
 
 group = "com.github.mvysny.sucklessprofiler"
-version = "0.5"
+version = "0.6-SNAPSHOT"
 
 application {
     mainClassName = "com.github.mvysny.sucklessprofiler.DemoKt"
