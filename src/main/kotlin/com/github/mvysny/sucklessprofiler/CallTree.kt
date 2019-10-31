@@ -149,14 +149,14 @@ class CallTree(val totalTime: Duration, val roots: List<Node>) {
      * @return totals, keyed by [groups] keys, mapping to duration.
      */
     fun calculateGroupTotals(groups: Map<String, List<String>>): Map<String, Duration> {
-        val totals: MutableMap<String, Long> = groups.keys.associate { it to 0L } .toMutableMap()
+        val totals: MutableMap<String, Long> = groups.keys.associateWith { 0L }.toMutableMap()
         val globs: Map<String, Glob> = groups.mapValues { Glob(it.value) }
         fun walkNodes(nodes: Collection<Node>) {
             for (node in nodes) {
                 val matchingGroupName: String? = globs.entries.firstOrNull { it.value.matches(node.element) } ?.key
                 if (matchingGroupName != null) {
                     // match! Append the node time towards the total for given group/key.
-                    totals.compute(matchingGroupName) { _, v -> (v ?: 0L) + node.totalTime.toMillis() }
+                    totals.compute(matchingGroupName) { _, v: Long? -> v!! + node.totalTime.toMillis() }
                 } else {
                     // no match, search its children.
                     walkNodes(node.children)
@@ -164,7 +164,7 @@ class CallTree(val totalTime: Duration, val roots: List<Node>) {
             }
         }
         walkNodes(roots)
-        return totals.mapValues { (_, v) -> Duration.ofMillis(v) }
+        return totals.mapValues { (_, v: Long) -> Duration.ofMillis(v) }
     }
 
     /**
@@ -186,8 +186,8 @@ class CallTree(val totalTime: Duration, val roots: List<Node>) {
  * @param totalTime the overall duration of the profiled code.
  */
 fun Map<String, Duration>.prettyPrint(totalTime: Duration): String {
-    val groupsDuration = entries.filter { it.value != Duration.ZERO }
-    val groupDump = groupsDuration.map { (group, duration) ->
+    val groupsDuration: List<Map.Entry<String, Duration>> = entries.filter { it.value != Duration.ZERO }
+    val groupDump: List<String> = groupsDuration.map { (group, duration) ->
         "$group: ${TimeFormatEnum.Millis.format(duration, totalTime)} (${TimeFormatEnum.Percentage.format(duration, totalTime)})"
     }
     return "Total: ${totalTime.toMillis()}ms [${groupDump.joinToString(", ")}]\n"

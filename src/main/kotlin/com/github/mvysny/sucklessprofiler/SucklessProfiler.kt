@@ -166,14 +166,14 @@ class SucklessProfiler {
             sb.append("====================================================================\n")
             sb.append("Result of profiling of $sampler: ${totalTime.toMillis()}ms, ${tree.sampleCount} samples\n")
             sb.append("====================================================================\n")
-            var st = callTree
+            var collapsedPrunedCallTree: CallTree = callTree
             if (pruneStacktraceTop) {
-                st = st.withStacktraceTopPruned()
+                collapsedPrunedCallTree = collapsedPrunedCallTree.withStacktraceTopPruned()
             }
-            st = st.withCollapsed(soft = Glob(collapsePackagesSoft + collapsePackagesHard), hard = Glob(collapsePackagesHard))
-            st.prettyPrintTo(sb, coloredDump, leftPaneSizeChars, timeFormat)
+            collapsedPrunedCallTree = collapsedPrunedCallTree.withCollapsed(soft = Glob(collapsePackagesSoft + collapsePackagesHard), hard = Glob(collapsePackagesHard))
+            collapsedPrunedCallTree.prettyPrintTo(sb, coloredDump, leftPaneSizeChars, timeFormat)
             sb.append("====================================================================\n")
-            val groups = tree.toCallTree(totalTime).calculateGroupTotals(groupTotals)
+            val groups: Map<String, Duration> = callTree.calculateGroupTotals(groupTotals)
             sb.append(groups.prettyPrint(totalTime))
             sb.append("====================================================================\n")
             println(sb)
@@ -219,8 +219,8 @@ private class StacktraceSampler(val threadToProfile: Thread) : Runnable {
             // peachy. How can I now, upon cancelation, await for the ongoing call to finish?
             // I don't! Since `samples` is thread-safe, I can just create a copy of whatever the sampler collected at any time, and work on that.
 //            synchronized(lock) {
-                val now = System.currentTimeMillis()
-            val trace = threadToProfile.stackTrace
+                val now: Long = System.currentTimeMillis()
+            val trace: Array<StackTraceElement> = threadToProfile.stackTrace
             if (trace.isNotEmpty()) {
                 samples.add(StacktraceSamples.Sample(trace, (now - lastStacktraceSampleAt).toInt()))
             }

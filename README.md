@@ -135,7 +135,35 @@ public abstract class AbstractTest {
 }
 ```
 
-#### About Stacktrace Sampling
+# How To Use / General Tips
+
+## Getting General Overview Where Your App Spends Most Time
+
+After the dump is printed on `profiler.stop(true)`, the last line looks like following:
+
+```
+Total: 100ms [DB: 25ms (25%), IO/Net: 10ms (10%)]
+```
+
+The profiler will sum up durations of certain call stacks, which will give you a nice
+overall statistics. By default the following statistics are supported:
+
+* DB - sums time spent in the JDBC driver. The following call stacks are considered: `"com.zaxxer.hikari.*", "org.mariadb.jdbc.*", "org.h2.*", "com.mysql.jdbc.*", "org.postgresql.*"`
+* IO/Net - sums time spent in I/O or network. The following call stacks are considered: `"java.io.*", "java.net.*", "javax.net.*"`
+
+However, you can define your own, simply by adding stuff into the `profiler.groupTotals` map as follows:
+
+```kotlin
+profiler.groupTotals["Password Hashing"] = listOf("my.project.BCryptPasswordEncoder")
+```
+
+When the groups overlap (they match the same class + method), first one in the order of
+`profiler.groupTotals` keys wins (`profiler.groupTotals` is a `LinkedHashMap` therefore the keys are ordered).
+
+When the groups target different parts of the call stack (e.g. you add groups both for JDBC and for your DAOs),
+then the group for the shallowest stack frame wins (in this case your DAOs since they're calling JDBC and they're closer up the call stack).
+
+## About Stacktrace Sampling
 
 A thread stacktrace is captured every 20ms (configurable) into a list of stacktrace samples. That list
 is afterwards converted to a tree, and the time spent is assigned. The Stacktrace Sampling method of
@@ -157,7 +185,8 @@ but the probability of this is very low.
 In order to obtain the stacktrace, the JVM must reach a safepoint; a thread may run for
 just a bit until it hits the safepoint, and therefore the terminal method
 may not be accurate. See [JVM safepoints](https://medium.com/software-under-the-hood/under-the-hood-java-peak-safepoints-dd45af07d766)
-for more info.
+for more info. Especially high-CPU-usage functions may often be missed since it will take some time
+until they reach a safepoint.
 
 To conclude:
 
