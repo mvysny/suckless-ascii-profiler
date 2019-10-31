@@ -122,7 +122,7 @@ public abstract class AbstractTest {
     private static SucklessProfiler profiler;
 
     @BeforeClass
-    public static void startupServer() {
+    public static void startProfiler() {
         profiler = new SucklessProfiler();
         profiler.setColoredDump(true);
         profiler.setPruneStacktraceTop(true);
