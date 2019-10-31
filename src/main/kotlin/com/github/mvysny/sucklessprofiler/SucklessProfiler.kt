@@ -161,25 +161,35 @@ class SucklessProfiler {
         val dump: Boolean = dumpProfilingInfo && this.dump && totalTime >= dumpOnlyProfilingsLongerThan
         if (dump) {
             // only now it is safe to access Sampler since Future.get() forms the happens-before relation
-            // don't print directly to stdout - there may be multiple profilings ongoing, and we don't want those println to interleave.
-            val sb = StringBuilder()
-            sb.append("====================================================================\n")
-            sb.append("Result of profiling of $sampler: ${totalTime.toMillis()}ms, ${tree.sampleCount} samples\n")
-            sb.append("====================================================================\n")
-            var collapsedPrunedCallTree: CallTree = callTree
-            if (pruneStacktraceTop) {
-                collapsedPrunedCallTree = collapsedPrunedCallTree.withStacktraceTopPruned()
-            }
-            collapsedPrunedCallTree = collapsedPrunedCallTree.withCollapsed(soft = Glob(collapsePackagesSoft + collapsePackagesHard), hard = Glob(collapsePackagesHard))
-            collapsedPrunedCallTree.prettyPrintTo(sb, coloredDump, leftPaneSizeChars, timeFormat)
-            sb.append("====================================================================\n")
-            val groups: Map<String, Duration> = callTree.calculateGroupTotals(groupTotals)
-            sb.append(groups.prettyPrint(totalTime))
-            sb.append("====================================================================\n")
-            println(sb)
+            dump(callTree)
         }
 
         return callTree
+    }
+
+    fun dump(callTree: CallTree) {
+        // don't print directly to stdout - there may be multiple profilings ongoing, and we don't want those println to interleave.
+        val sb = StringBuilder()
+        sb.append("====================================================================\n")
+        sb.append("Result of profiling of $sampler: ${callTree.totalTime.toMillis()}ms, ${callTree.sampleCount} samples\n")
+        sb.append("====================================================================\n")
+        var collapsedPrunedCallTree: CallTree = callTree
+        if (pruneStacktraceTop) {
+            collapsedPrunedCallTree = collapsedPrunedCallTree.withStacktraceTopPruned()
+        }
+        collapsedPrunedCallTree = collapsedPrunedCallTree.withCollapsed(soft = Glob(collapsePackagesSoft + collapsePackagesHard), hard = Glob(collapsePackagesHard))
+        collapsedPrunedCallTree.prettyPrintTo(sb, coloredDump, leftPaneSizeChars, timeFormat)
+        sb.append("====================================================================\n")
+        println(sb)
+        dumpGroupTotals(callTree)
+    }
+
+    fun dumpGroupTotals(callTree: CallTree) {
+        val sb = StringBuilder()
+        val groups: Map<String, Duration> = callTree.calculateGroupTotals(groupTotals)
+        sb.append(groups.prettyPrint(callTree.totalTime))
+        sb.append("====================================================================\n")
+        println(sb)
     }
 }
 
@@ -282,7 +292,7 @@ private class StacktraceSamples(val samples: List<Sample>) {
             leafNode.ownTime += sample.durationMs.toLong()
         }
 
-        return CallTree(totalTime, roots.values.map { it.toNode() })
+        return CallTree(totalTime, roots.values.map { it.toNode() }, sampleCount)
     }
 }
 

@@ -4,8 +4,11 @@ import java.time.Duration
 
 /**
  * Represents a call tree - a call history. Every node contains a pointer to a class+method, time spent etc. Immutable.
+ * @param totalTime how long the profiler ran
+ * @param roots root nodes
+ * @param sampleCount how many times the stacktrace sample was taken, over the entire profiling period.
  */
-class CallTree(val totalTime: Duration, val roots: List<Node>) {
+class CallTree(val totalTime: Duration, val roots: List<Node>, val sampleCount: Int) {
     init {
         require(totalTime >= Duration.ZERO) { "Got negative totalTime $totalTime" }
     }
