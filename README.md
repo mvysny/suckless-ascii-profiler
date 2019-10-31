@@ -167,7 +167,7 @@ When the groups overlap (they match the same class + method), first one in the o
 When the groups target different parts of the call stack (e.g. you add groups both for JDBC and for your DAOs),
 then the group for the shallowest stack frame wins (in this case your DAOs since they're calling JDBC and they're closer up the call stack).
 
-## About Stacktrace Sampling
+# About Stacktrace Sampling
 
 A thread stacktrace is captured every 20ms (configurable) into a list of stacktrace samples. That list
 is afterwards converted to a tree, and the time spent is assigned. The Stacktrace Sampling method of
