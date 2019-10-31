@@ -23,7 +23,7 @@ group = "com.github.mvysny.sucklessprofiler"
 version = "0.5-SNAPSHOT"
 
 application {
-    mainClassName = "com.github.mvysny.sucklessprofiler.SucklessProfilerKt"
+    mainClassName = "com.github.mvysny.sucklessprofiler.DemoKt"
 }
 
 repositories {
