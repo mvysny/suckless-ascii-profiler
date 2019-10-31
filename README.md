@@ -44,12 +44,10 @@ And you should see the output similar to the screenshot above.
 
 ## Usage
 
-Add the following repository and dependency to your Gradle script:
+The profiler is in both Maven Central and JCenter, so it's very easy to add to your project.
+Just add the following repository and dependency to your Gradle script:
 
 ```groovy
-repositories {
-    maven { url "https://dl.bintray.com/mvysny/github/" }
-}
 dependencies {
     compile "com.github.mvysny.sucklessprofiler:suckless-profiler:x.y"
 }
@@ -57,13 +55,6 @@ dependencies {
 
 Maven:
 ```xml
-    <repositories>
-        <repository>
-            <id>mvysny-github</id>
-            <url>https://dl.bintray.com/mvysny/github/</url>
-        </repository>
-    </repositories>
-
     <dependencies>
         <dependency>
             <groupId>com.github.mvysny.sucklessprofiler</groupId>
