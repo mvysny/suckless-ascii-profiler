@@ -46,6 +46,9 @@ class CallTree(val totalTime: Duration, val roots: List<Node>) {
          * Checks whether this node and the whole tree matches given [glob].
          */
         fun treeMatches(glob: Glob): Boolean = glob.matches(element) && children.all { it.treeMatches(glob) }
+
+        fun withChildrenSortedWith(comparator: Comparator<Node>): Node =
+                copy(children = children.map { it.withChildrenSortedWith(comparator) } .sortedWith(comparator))
     }
 
     /**
@@ -58,6 +61,7 @@ class CallTree(val totalTime: Duration, val roots: List<Node>) {
      * @param soft the 'soft' collapser - the node including the subtree must match in order to be collapsed.
      * @param hard the 'hard' collapser - it is enough that this node matches this glob.
      */
+    @JvmOverloads
     fun withCollapsed(soft: Glob = Glob.MATCH_NOTHING, hard: Glob = Glob.MATCH_NOTHING): CallTree {
         fun collapseIfMatches(node: Node): Node = if (hard.matches(node.element) || node.treeMatches(soft)) {
             node.collapsed()
@@ -72,7 +76,10 @@ class CallTree(val totalTime: Duration, val roots: List<Node>) {
      * @param timeFormat the format to print the time in.
      * @param leftPaneSizeChars how many characters to pad the right stacktrace pointer.
      */
-    fun prettyPrint(colored: Boolean = false, leftPaneSizeChars: Int = 40, timeFormat: TimeFormatEnum = TimeFormatEnum.Percentage): String =
+    @JvmOverloads
+    fun prettyPrint(colored: Boolean = false,
+                    leftPaneSizeChars: Int = 40,
+                    timeFormat: TimeFormatEnum = TimeFormatEnum.Percentage): String =
         buildString { prettyPrintTo(this, colored, leftPaneSizeChars, timeFormat) }
 
     /**
@@ -143,13 +150,13 @@ class CallTree(val totalTime: Duration, val roots: List<Node>) {
      */
     fun calculateGroupTotals(groups: Map<String, List<String>>): Map<String, Duration> {
         val totals: MutableMap<String, Long> = groups.keys.associate { it to 0L } .toMutableMap()
-        val globs = groups.mapValues { Glob(it.value) }
+        val globs: Map<String, Glob> = groups.mapValues { Glob(it.value) }
         fun walkNodes(nodes: Collection<Node>) {
             for (node in nodes) {
                 val matchingGroupName: String? = globs.entries.firstOrNull { it.value.matches(node.element) } ?.key
                 if (matchingGroupName != null) {
                     // match! Append the node time towards the total for given group/key.
-                    totals.compute(matchingGroupName, { _, v -> (v ?: 0L) + node.totalTime.toMillis() })
+                    totals.compute(matchingGroupName) { _, v -> (v ?: 0L) + node.totalTime.toMillis() }
                 } else {
                     // no match, search its children.
                     walkNodes(node.children)
@@ -159,6 +166,19 @@ class CallTree(val totalTime: Duration, val roots: List<Node>) {
         walkNodes(roots)
         return totals.mapValues { (_, v) -> Duration.ofMillis(v) }
     }
+
+    /**
+     * Returns a copy of this call tree, with all nodes sorted using given [comparator].
+     */
+    fun sortedWith(comparator: Comparator<Node>): CallTree {
+        val sorted: List<Node> = this.roots.map { it.withChildrenSortedWith(comparator) } .sortedWith(comparator)
+        return CallTree(totalTime, sorted)
+    }
+
+    /**
+     * Returns a copy of this call tree, with all nodes sorted longest [Node.totalTime] first.
+     */
+    fun sortedLongestFirst(): CallTree = sortedWith(compareBy { -it.totalTime.toMillis() })
 }
 
 /**

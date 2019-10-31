@@ -112,6 +112,11 @@ class SucklessProfiler {
     var timeFormat: TimeFormatEnum = TimeFormatEnum.Percentage
 
     /**
+     * If true, sort stack frames, longest first.
+     */
+    var sortLongestFirst: Boolean = true
+
+    /**
      * Starts to profile this thread. There is no support for profiling multiple threads.
      */
     fun start() {
@@ -148,9 +153,12 @@ class SucklessProfiler {
         started = false
         samplerFuture.cancel(false)
         val tree: StacktraceSamples = sampler.copy()
-        val callTree: CallTree = tree.toCallTree(totalTime)
+        var callTree: CallTree = tree.toCallTree(totalTime)
+        if (sortLongestFirst) {
+            callTree = callTree.sortedLongestFirst()
+        }
 
-        val dump = dumpProfilingInfo && this.dump && totalTime >= dumpOnlyProfilingsLongerThan
+        val dump: Boolean = dumpProfilingInfo && this.dump && totalTime >= dumpOnlyProfilingsLongerThan
         if (dump) {
             // only now it is safe to access Sampler since Future.get() forms the happens-before relation
             // don't print directly to stdout - there may be multiple profilings ongoing, and we don't want those println to interleave.
@@ -249,14 +257,17 @@ private class StacktraceSamples(val samples: List<Sample>) {
          */
         data class SNode(val element: StackTraceElement, var occurrences: Int = 0, var ownTime: Long = 0L,
                          val children: MutableMap<StackTraceElement, SNode> = LinkedHashMap()) {
-            fun toNode(): CallTree.Node = CallTree.Node(element, children.values.map { it.toNode() }, Duration.ofMillis(ownTime), occurrences)
+            fun toNode(): CallTree.Node = CallTree.Node(element,
+                    children.values.map { it.toNode() },
+                    Duration.ofMillis(ownTime),
+                    occurrences)
         }
 
         val roots = LinkedHashMap<StackTraceElement, SNode>()
 
-        for (sample in samples) {
+        for (sample: Sample in samples) {
             var parentNode: SNode? = null
-            for (element in sample.stacktrace.reversedArray()) {
+            for (element: StackTraceElement in sample.stacktrace.reversedArray()) {
                 val node: SNode
                 if (parentNode == null) {
                     node = roots.getOrPut(element) { SNode(element) }
