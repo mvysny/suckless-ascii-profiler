@@ -146,12 +146,12 @@ Total: 100ms [DB: 25ms (25%), IO/Net: 10ms (10%)]
 ```
 
 The profiler will sum up durations of certain call stacks, which will give you a nice
-overall statistics. By default the following statistics are supported:
+overall statistics. By default the following groups are supported:
 
 * DB - sums time spent in the JDBC driver. The following call stacks are considered: `"com.zaxxer.hikari.*", "org.mariadb.jdbc.*", "org.h2.*", "com.mysql.jdbc.*", "org.postgresql.*"`
 * IO/Net - sums time spent in I/O or network. The following call stacks are considered: `"java.io.*", "java.net.*", "javax.net.*"`
 
-However, you can define your own, simply by adding stuff into the `profiler.groupTotals` map as follows:
+You can define your own groups, simply by adding stuff into the `profiler.groupTotals` map as follows:
 
 ```kotlin
 profiler.groupTotals["Password Hashing"] = listOf("my.project.BCryptPasswordEncoder")
