@@ -57,7 +57,7 @@ class CallTree(val totalTime: Duration, val roots: List<Node>, val sampleCount: 
     /**
      * Prunes a path with no fork from this node down into its children.
      */
-    fun withStacktraceTopPruned() = CallTree(totalTime, roots.map { it.withStacktraceTopPruned() } )
+    fun withStacktraceTopPruned() = CallTree(totalTime, roots.map { it.withStacktraceTopPruned() } , sampleCount)
 
     /**
      * Returns a new stack tree with nodes matching given pair of globs collapsed.
@@ -71,7 +71,7 @@ class CallTree(val totalTime: Duration, val roots: List<Node>, val sampleCount: 
         } else {
             node.copy(children = node.children.map { collapseIfMatches(it) })
         }
-        return CallTree(totalTime, roots.map { collapseIfMatches(it) })
+        return CallTree(totalTime, roots.map { collapseIfMatches(it) }, sampleCount)
     }
 
     /**
@@ -175,7 +175,7 @@ class CallTree(val totalTime: Duration, val roots: List<Node>, val sampleCount: 
      */
     fun sortedWith(comparator: Comparator<Node>): CallTree {
         val sorted: List<Node> = this.roots.map { it.withChildrenSortedWith(comparator) } .sortedWith(comparator)
-        return CallTree(totalTime, sorted)
+        return CallTree(totalTime, sorted, sampleCount)
     }
 
     /**

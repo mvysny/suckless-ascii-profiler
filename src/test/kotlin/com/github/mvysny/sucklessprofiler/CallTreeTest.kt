@@ -20,7 +20,7 @@ class TreeBuilder {
 fun tree(block: TreeBuilder.()->Unit): CallTree {
     val treeBuilder = TreeBuilder()
     treeBuilder.block()
-    return CallTree(Duration.ofMillis(100), treeBuilder.toNodes())
+    return CallTree(Duration.ofMillis(100), treeBuilder.toNodes(), 1)
 }
 
 class CallTreeTest : DynaTest({
