@@ -143,13 +143,13 @@ class SucklessProfiler {
      * Stops the profiler and by default dumps the data obtained. This method *must* be called to stop the profiling thread,
      * otherwise it will continue to watch this thread endlessly and needlessly, wasting both CPU cycles and memory (since the stacktrace samples are
      * stored in-memory).
-     * @param dumpProfilingInfo defaults to true. If false, nothing is dumped - collected profiling info is just thrown away.
+     * @param dumpProfilingInfo defaults to [dump]. If false, nothing is dumped - collected profiling info is just thrown away.
      * @return the stack tree, unpruned and uncollapsed
      */
     @JvmOverloads
-    fun stop(dumpProfilingInfo: Boolean = true): CallTree {
+    fun stop(dumpProfilingInfo: Boolean = dump): CallTree {
         check(::samplerFuture.isInitialized) { "Profiler has not been started with start()" }
-        val totalTime = Duration.ofMillis(System.currentTimeMillis() - startedAt)
+        val totalTime: Duration = Duration.ofMillis(System.currentTimeMillis() - startedAt)
         started = false
         samplerFuture.cancel(false)
         val tree: StacktraceSamples = sampler.copy()
