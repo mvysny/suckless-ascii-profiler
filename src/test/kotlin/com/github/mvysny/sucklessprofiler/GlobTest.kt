@@ -25,6 +25,11 @@ class GlobTest : DynaTest({
         expect(true) { glob.matches("com.zaxxer.hikari.pool.HikariProxyConnection") }
     }
 
+    test("class matching") {
+        expect(true) { "java.lang.String".toGlob().matches("java.lang.String") }
+        expect(false) { "java.lang.String".toGlob().matches("java.lang.StringBuilder") }
+    }
+
     test("match-nothing") {
         expect(false) { Glob.MATCH_NOTHING.matches("java.lang.String") }
         expect(false) { Glob.MATCH_NOTHING.matches("com.zaxxer.hikari.pool.HikariProxyConnection") }

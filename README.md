@@ -138,6 +138,26 @@ public abstract class AbstractTest {
 
 # How To Use / General Tips
 
+## Globbing / Class Matching
+
+All follow-up tips use class name matching, so it's best to show some examples for that:
+
+* `java.*` will match `java.lang.String` and `java.io.BufferedReader` but not `javax.net.SocketFactory`
+* `java.lang.String` will only match `java.lang.String` and not `java.lang.StringBuilder`
+
+## Hard/Soft Stack Collapsing
+
+If the call ends in one of `java.*` classes, it probably ends up in Java built-in class as `java.util.Map` which we do not want to dig into
+and profile its internals. We want to collapse the call node (all sub-calls will simply be counted towards the own time of this method).
+
+The difference between soft and hard collapsing is that soft-collapsing `java.*` won't collapse for example
+reflection calls like `java.lang.Method`,
+since the stack trace continues with your app's logic which is not `java.*`.
+
+Adding `java.*` to hard collapse would collapse all reflection calls which potentially continue executing
+your app's logic, which is generally not what you want to do. However, hard-collapsing
+terminal libraries like JDBC drivers is generally okay to do.
+
 ## Getting General Overview Where Your App Spends Most Time
 
 After the dump is printed on `profiler.stop(true)`, the last line looks like following:

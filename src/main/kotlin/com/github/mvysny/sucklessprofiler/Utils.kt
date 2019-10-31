@@ -8,7 +8,9 @@ import java.time.Duration
  * @property globs a list of globs; any item from the list matches. If empty, the glob will match nothing.
  */
 class Glob(val globs: List<String>) {
-    private val regex = globs.map { it.replace(".", "\\.").replace("*", ".*") }.joinToString("|").toRegex()
+    private val regex: Regex = globs
+            .joinToString("|") { it.replace(".", "\\.").replace("*", ".*") }
+            .toRegex()
     override fun toString() = "Glob($globs)"
     /**
      * Checks if given [clazz] matches.
