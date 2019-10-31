@@ -68,7 +68,7 @@ Maven:
         <dependency>
             <groupId>com.github.mvysny.sucklessprofiler</groupId>
             <artifactId>suckless-profiler</artifactId>
-            <version>0.4</version>
+            <version>x.y</version>
         </dependency>
     </dependencies>
 ```
