@@ -65,8 +65,16 @@ class CallTree(val totalTime: Duration, val roots: List<Node>, val sampleCount: 
      * @param hard the 'hard' collapser - it is enough that this node matches this glob.
      */
     @JvmOverloads
-    fun withCollapsed(soft: Glob = Glob.MATCH_NOTHING, hard: Glob = Glob.MATCH_NOTHING): CallTree {
-        fun collapseIfMatches(node: Node): Node = if (hard.matches(node.element) || node.treeMatches(soft)) {
+    fun withCollapsed(soft: Glob = Glob.MATCH_NOTHING, hard: Glob = Glob.MATCH_NOTHING): CallTree =
+            withCollapsed { node: Node -> hard.matches(node.element) || node.treeMatches(soft) }
+
+    /**
+     * Returns a new stack tree with nodes matching given pair of globs collapsed.
+     * @param soft the 'soft' collapser - the node including the subtree must match in order to be collapsed.
+     * @param hard the 'hard' collapser - it is enough that this node matches this glob.
+     */
+    fun withCollapsed(shouldCollapse: (Node)->Boolean): CallTree {
+        fun collapseIfMatches(node: Node): Node = if (shouldCollapse(node)) {
             node.collapsed()
         } else {
             node.copy(children = node.children.map { collapseIfMatches(it) })

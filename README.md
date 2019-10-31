@@ -158,7 +158,14 @@ Adding `java.*` to hard collapse would collapse all reflection calls which poten
 your app's logic, which is generally not what you want to do. However, hard-collapsing
 terminal libraries like JDBC drivers is generally okay to do.
 
-## Getting General Overview Where Your App Spends Most Time
+## Time-based Stack Collapsing
+
+If you need the general overview of where your app spends most of the time, you don't
+need to include all those 1-ms methods into your stack trace. You can therefore set
+`profiler.collapseBelowPercent` variable to e.g. 5 (it's `0` by default) - that will
+collapse all methods whose run time is below 5% of the total profile time.
+
+## Getting Summary Overview Where Your App Spends Most Time
 
 After the dump is printed on `profiler.stop(true)`, the last line looks like following:
 

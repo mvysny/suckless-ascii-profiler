@@ -117,6 +117,12 @@ class SucklessProfiler {
     var sortLongestFirst: Boolean = true
 
     /**
+     * Defaults to 0. If not zero, it will collapse all methods whose run time is below 5% of the total profile time.
+     * Set this to 5% to get a nice overview where the app spends most of its time.
+     */
+    var collapseBelowPercent: Int = 0
+
+    /**
      * Starts to profile this thread. There is no support for profiling multiple threads.
      */
     fun start() {
@@ -178,6 +184,10 @@ class SucklessProfiler {
             collapsedPrunedCallTree = collapsedPrunedCallTree.withStacktraceTopPruned()
         }
         collapsedPrunedCallTree = collapsedPrunedCallTree.withCollapsed(soft = Glob(collapsePackagesSoft + collapsePackagesHard), hard = Glob(collapsePackagesHard))
+        if (collapseBelowPercent > 0) {
+            val minDuration: Duration = Duration.ofMillis(callTree.totalTime.toMillis() * collapseBelowPercent / 100)
+            collapsedPrunedCallTree = collapsedPrunedCallTree.withCollapsed { it.totalTime < minDuration }
+        }
         collapsedPrunedCallTree.prettyPrintTo(sb, coloredDump, leftPaneSizeChars, timeFormat)
         sb.append("====================================================================\n")
         println(sb)
