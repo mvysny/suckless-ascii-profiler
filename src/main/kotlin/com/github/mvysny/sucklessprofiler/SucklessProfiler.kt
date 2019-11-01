@@ -41,11 +41,31 @@ class SucklessProfiler {
      */
     private var startedAt: Long? = null
     /**
-     * The call tree captured by this profiler. Populated in [stop].
+     * The raw call tree captured by this profiler. Only accessible after [stop] has been called.
      * Not pruned nor collapsed.
      */
-    lateinit var callTree: CallTree
+    lateinit var rawCallTree: CallTree
         private set
+
+    /**
+     * Returns the call tree:
+     * * pruned if [pruneStacktraceTop]
+     * * collapsed according to [collapsePackagesSoft] and [collapsePackagesHard]
+     * * collapsed according to [collapseBelowPercent]
+     * Only accessible after [stop] has been called.
+     */
+    val callTree: CallTree get() {
+        var collapsedPrunedCallTree = rawCallTree
+        if (pruneStacktraceTop) {
+            collapsedPrunedCallTree = collapsedPrunedCallTree.withStacktraceTopPruned()
+        }
+        collapsedPrunedCallTree = collapsedPrunedCallTree.withCollapsed(soft = Glob(collapsePackagesSoft + collapsePackagesHard), hard = Glob(collapsePackagesHard))
+        if (collapseBelowPercent > 0) {
+            val minDuration: Duration = Duration.ofMillis(rawCallTree.totalTime.toMillis() * collapseBelowPercent / 100)
+            collapsedPrunedCallTree = collapsedPrunedCallTree.withCollapsed { it.totalTime < minDuration }
+        }
+        return collapsedPrunedCallTree
+    }
 
     /**
      * Whether [stop] and [profile] will dump profiling info. Defaults to true.
@@ -171,7 +191,7 @@ class SucklessProfiler {
     /**
      * Checks whether [stop] has been called on this instance.
      */
-    val wasStopped: Boolean get() = ::callTree.isInitialized
+    val wasStopped: Boolean get() = ::rawCallTree.isInitialized
 
     /**
      * Stops the profiler and by default dumps the data obtained. This method *must* be called to stop the profiling thread,
@@ -181,7 +201,7 @@ class SucklessProfiler {
      * This method may be called multiple times; every consecutive call will simply
      * return the same [CallTree], optionally dumping it to the console.
      * @param dumpProfilingInfo defaults to [dump]. If false, nothing is dumped - collected profiling info is just thrown away.
-     * @return [callTree], unpruned and uncollapsed
+     * @return [rawCallTree], unpruned and uncollapsed
      */
     @JvmOverloads
     fun stop(dumpProfilingInfo: Boolean = dump): CallTree {
@@ -191,19 +211,19 @@ class SucklessProfiler {
             samplerFuture.cancel(false)
             val totalTime: Duration = Duration.ofMillis(stoppedAt - startedAt!!)
             val tree: StacktraceSamples = sampler.copy()
-            callTree = tree.toCallTree(totalTime)
+            rawCallTree = tree.toCallTree(totalTime)
             if (sortLongestFirst) {
-                callTree = callTree.sortedLongestFirst()
+                rawCallTree = rawCallTree.sortedLongestFirst()
             }
         }
 
-        val dump: Boolean = dumpProfilingInfo && dumpOnlyProfilingsLongerThan <= callTree.totalTime
+        val dump: Boolean = dumpProfilingInfo && dumpOnlyProfilingsLongerThan <= rawCallTree.totalTime
         if (dump) {
             // only now it is safe to access Sampler since Future.get() forms the happens-before relation
             dump()
         }
 
-        return callTree
+        return rawCallTree
     }
 
     /**
@@ -213,27 +233,21 @@ class SucklessProfiler {
         // don't print directly to stdout - there may be multiple profilings ongoing, and we don't want those println to interleave.
         val sb = StringBuilder()
         sb.append("====================================================================\n")
-        sb.append("Result of profiling of $sampler: ${callTree.totalTime.toMillis()}ms, ${callTree.sampleCount} samples\n")
+        sb.append("Result of profiling of $sampler: ${rawCallTree.totalTime.toMillis()}ms, ${rawCallTree.sampleCount} samples\n")
         sb.append("====================================================================\n")
-        var collapsedPrunedCallTree: CallTree = callTree
-        if (pruneStacktraceTop) {
-            collapsedPrunedCallTree = collapsedPrunedCallTree.withStacktraceTopPruned()
-        }
-        collapsedPrunedCallTree = collapsedPrunedCallTree.withCollapsed(soft = Glob(collapsePackagesSoft + collapsePackagesHard), hard = Glob(collapsePackagesHard))
-        if (collapseBelowPercent > 0) {
-            val minDuration: Duration = Duration.ofMillis(callTree.totalTime.toMillis() * collapseBelowPercent / 100)
-            collapsedPrunedCallTree = collapsedPrunedCallTree.withCollapsed { it.totalTime < minDuration }
-        }
-        collapsedPrunedCallTree.prettyPrintTo(sb, coloredDump, leftPaneSizeChars, timeFormat)
+        callTree.prettyPrintTo(sb, coloredDump, leftPaneSizeChars, timeFormat)
         sb.append("====================================================================\n")
         println(sb)
         dumpGroupTotals()
     }
 
+    /**
+     * Calculates overall statistics on the [callTree] and dumps them into stdout.
+     */
     fun dumpGroupTotals() {
         val sb = StringBuilder()
-        val groups: Map<String, Duration> = callTree.calculateGroupTotals(groupTotals)
-        sb.append(groups.prettyPrint(callTree.totalTime))
+        val groups: Map<String, Duration> = rawCallTree.calculateGroupTotals(groupTotals)
+        sb.append(groups.prettyPrint(rawCallTree.totalTime))
         sb.append("====================================================================\n")
         println(sb)
     }
