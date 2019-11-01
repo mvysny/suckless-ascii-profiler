@@ -30,12 +30,22 @@ enum class TimeFormatEnum {
  * The profiler. Create a new instance, configure it, then call [start]+[stop] or [profile].
  *
  * Every profiler instance can be used only once. Calling [start] multiple times leads to undefined results.
+ *
+ * Thread-unsafe - the profiler is intended to profile one thread only.
  */
 class SucklessProfiler {
     private lateinit var samplerFuture: ScheduledFuture<*>
     private lateinit var sampler: StacktraceSampler
-    @Volatile private var started = false
-    private var startedAt = System.currentTimeMillis()
+    /**
+     * When the profiling session was started. Populated in [start].
+     */
+    private var startedAt: Long? = null
+    /**
+     * The call tree captured by this profiler. Populated in [stop].
+     * Not pruned nor collapsed.
+     */
+    lateinit var callTree: CallTree
+        private set
 
     /**
      * Whether [stop] and [profile] will dump profiling info. Defaults to true.
@@ -122,10 +132,13 @@ class SucklessProfiler {
     var collapseBelowPercent: Int = 0
 
     /**
-     * Starts to profile this thread. There is no support for profiling multiple threads.
+     * Starts to profile [Thread.currentThread]. There is no support for profiling multiple threads.
+     * @throws IllegalStateException if the profiler is already running, or it has been stopped.
      */
     fun start() {
-        started = true
+        check(!isRunning) { "The profiler is already running" }
+        check(!wasStarted) { "This profiler instance has been already started. It is not possible to reuse profiler instances, please create a new profiler instance for new profiling session." }
+        startedAt = System.currentTimeMillis()
         sampler = StacktraceSampler(Thread.currentThread())
         samplerFuture = executor.scheduleAtFixedRate(sampler, 0, sampleEachMs.toLong(), TimeUnit.MILLISECONDS)
     }
@@ -145,34 +158,58 @@ class SucklessProfiler {
     }
 
     /**
+     * Checks whether the profiler is currently running: it has been started with [start]
+     * and hasn't been yet stopped with [stop].
+     */
+    val isRunning: Boolean get() = wasStarted && !wasStopped
+
+    /**
+     * Checks whether [start] has been called on this instance.
+     */
+    val wasStarted: Boolean get() = startedAt != null
+
+    /**
+     * Checks whether [stop] has been called on this instance.
+     */
+    val wasStopped: Boolean get() = ::callTree.isInitialized
+
+    /**
      * Stops the profiler and by default dumps the data obtained. This method *must* be called to stop the profiling thread,
      * otherwise it will continue to watch this thread endlessly and needlessly, wasting both CPU cycles and memory (since the stacktrace samples are
      * stored in-memory).
+     *
+     * This method may be called multiple times; every consecutive call will simply
+     * return the same [CallTree], optionally dumping it to the console.
      * @param dumpProfilingInfo defaults to [dump]. If false, nothing is dumped - collected profiling info is just thrown away.
-     * @return the stack tree, unpruned and uncollapsed
+     * @return [callTree], unpruned and uncollapsed
      */
     @JvmOverloads
     fun stop(dumpProfilingInfo: Boolean = dump): CallTree {
-        check(::samplerFuture.isInitialized) { "Profiler has not been started with start()" }
-        val totalTime: Duration = Duration.ofMillis(System.currentTimeMillis() - startedAt)
-        started = false
-        samplerFuture.cancel(false)
-        val tree: StacktraceSamples = sampler.copy()
-        var callTree: CallTree = tree.toCallTree(totalTime)
-        if (sortLongestFirst) {
-            callTree = callTree.sortedLongestFirst()
+        check(wasStarted) { "Profiler has not been started with start()" }
+        if (isRunning) {
+            val stoppedAt: Long = System.currentTimeMillis()
+            samplerFuture.cancel(false)
+            val totalTime: Duration = Duration.ofMillis(stoppedAt - startedAt!!)
+            val tree: StacktraceSamples = sampler.copy()
+            callTree = tree.toCallTree(totalTime)
+            if (sortLongestFirst) {
+                callTree = callTree.sortedLongestFirst()
+            }
         }
 
-        val dump: Boolean = dumpProfilingInfo && this.dump && totalTime >= dumpOnlyProfilingsLongerThan
+        val dump: Boolean = dumpProfilingInfo && dumpOnlyProfilingsLongerThan <= callTree.totalTime
         if (dump) {
             // only now it is safe to access Sampler since Future.get() forms the happens-before relation
-            dump(callTree)
+            dump()
         }
 
         return callTree
     }
 
-    fun dump(callTree: CallTree) {
+    /**
+     * Dumps the [callTree] profiling info as a tree of calls into stdout.
+     */
+    fun dump() {
         // don't print directly to stdout - there may be multiple profilings ongoing, and we don't want those println to interleave.
         val sb = StringBuilder()
         sb.append("====================================================================\n")
@@ -190,10 +227,10 @@ class SucklessProfiler {
         collapsedPrunedCallTree.prettyPrintTo(sb, coloredDump, leftPaneSizeChars, timeFormat)
         sb.append("====================================================================\n")
         println(sb)
-        dumpGroupTotals(callTree)
+        dumpGroupTotals()
     }
 
-    fun dumpGroupTotals(callTree: CallTree) {
+    fun dumpGroupTotals() {
         val sb = StringBuilder()
         val groups: Map<String, Duration> = callTree.calculateGroupTotals(groupTotals)
         sb.append(groups.prettyPrint(callTree.totalTime))
@@ -204,12 +241,12 @@ class SucklessProfiler {
 
 // oh crap: ScheduledExecutorService acts as a fixed-sized pool using corePoolSize threads and an unbounded queue, adjustments to maximumPoolSize have no useful effect?!?
 // better have more core pool threads then.
-private val executor = Executors.newScheduledThreadPool(3, { runnable ->
+private val executor = Executors.newScheduledThreadPool(3) { runnable ->
     val t = Thread(runnable)
     t.name = "Suckless Profiler Thread"
     t.isDaemon = true
     t
-})
+}
 
 /**
  * Periodically invoked by the [executor], collects one stacktrace sample per invocation.
