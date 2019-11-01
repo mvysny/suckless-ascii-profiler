@@ -230,7 +230,8 @@ class SucklessProfiler {
      * Dumps the [callTree] profiling info as a tree of calls into stdout.
      */
     fun dump() {
-        // don't print directly to stdout - there may be multiple profilings ongoing, and we don't want those println to interleave.
+        // don't print directly to stdout - other threads may be printing something as well,
+        // and we don't want those println to interleave.
         val sb = StringBuilder()
         sb.append("====================================================================\n")
         sb.append("Result of profiling of $sampler: ${rawCallTree.totalTime.toMillis()}ms, ${rawCallTree.sampleCount} samples\n")
