@@ -10,10 +10,10 @@ if (localProperties.exists()) {
 }
 
 plugins {
-    kotlin("jvm") version "1.3.50"
+    kotlin("jvm") version "1.4.10"
     id("com.jfrog.bintray") version "1.8.3"
     `maven-publish`
-    id("org.jetbrains.dokka") version "0.9.17"
+    id("org.jetbrains.dokka") version "1.4.0"
     application
 }
 
@@ -28,12 +28,12 @@ application {
 
 repositories {
     mavenCentral()
-    maven { setUrl("https://dl.bintray.com/mvysny/github") }
+    jcenter()
 }
 
 dependencies {
     compile(kotlin("stdlib-jdk8"))
-    testCompile("com.github.mvysny.dynatest:dynatest-engine:0.15")
+    testCompile("com.github.mvysny.dynatest:dynatest-engine:0.19")
 }
 
 val sourceJar = task("sourceJar", Jar::class) {
@@ -43,12 +43,8 @@ val sourceJar = task("sourceJar", Jar::class) {
 }
 
 val javadocJar = task("javadocJar", Jar::class) {
-    val javadoc = tasks["dokka"] as DokkaTask
-    javadoc.outputFormat = "javadoc"
-    javadoc.outputDirectory = "$buildDir/javadoc"
-    dependsOn(javadoc)
+    from(tasks["dokkaJavadoc"])
     archiveClassifier.set("javadoc")
-    from(javadoc.outputDirectory)
 }
 
 publishing {
