@@ -1,4 +1,3 @@
-[![Build Status](https://travis-ci.org/mvysny/suckless-ascii-profiler.svg?branch=master)](https://travis-ci.org/mvysny/suckless-ascii-profiler)
 [![Join the chat at https://gitter.im/vaadin/vaadin-on-kotlin](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/vaadin/vaadin-on-kotlin?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![GitHub tag](https://img.shields.io/github/tag/mvysny/suckless-ascii-profiler.svg)](https://github.com/mvysny/suckless-ascii-profiler/tags)
 
